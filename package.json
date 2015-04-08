@@ -1,0 +1,21 @@
+{
+  "name": "kvs.io",
+  "version": "1.0.0",
+  "description": "kvs.io initial go",
+  "main": "index.ls",
+  "scripts": {
+    "start": "nodemon --exec lsc index.ls",
+    "test": "nodemon -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test"
+  },
+  "author": "Doug Luce",
+  "license": "ISC",
+  "dependencies": {
+    "basho-riak-client": "^1.0.1",
+    "riak-js": "^1.0.3"
+  },
+  "devDependencies": {
+    "LiveScript": "^1.3.1",
+    "mocha": "^2.2.1",
+    "nodemon": "^1.3.7"
+  }
+}
