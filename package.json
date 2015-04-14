@@ -4,13 +4,14 @@
   "description": "kvs.io initial go",
   "main": "api.ls",
   "scripts": {
-    "start": "nodemon --exec lsc api.ls",
-    "test": "nodemon -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test"
+    "start": "nodemon -L -e ls --exec lsc api.ls",
+    "test": "nodemon -L -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test"
   },
   "author": "Doug Luce",
   "license": "ISC",
   "dependencies": {
     "basho-riak-client": "^1.0.1",
+    "bluebird": "^2.9.24",
     "ipware": "0.0.4",
     "restify": "^3.0.2",
     "riak-js": "^1.0.3",
