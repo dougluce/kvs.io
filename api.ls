@@ -74,10 +74,33 @@ getkey = (req, res, next) ->
   res.send result.values.shift!value.toString 'utf8'
   next!
 
+delkey = (req, res, next) ->
+  {bucket, key} = req.params
+  # Does this bucket exist?
+  err, result <- fetchValue 'buckets' bucket
+  return next err if err
+  if result.isNotFound
+     return next new restify.NotFoundError "Entry not found."
+  # Does the entry exist?
+  err, result <- fetchValue bucket, key
+  return next err if err
+  if result.isNotFound
+    return next new restify.NotFoundError "Entry not found."
+  riak_client.deleteValue do
+    * bucket: bucket
+      key: key
+    (err, result) ->
+      return next err if err
+      if not result
+        return next new restify.NotFoundError "Entry not found."
+      res.send 204
+      next!
+
 exports.init = (server) ->
   server.get '/createbucket/', create_bucket
   server.get '/setkey/:bucket/:key/:value', setkey
   server.get '/getkey/:bucket/:key', getkey
+  server.get '/delkey/:bucket/:key', delkey
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
