@@ -17,17 +17,17 @@ before (done) ->
   done!
 
 describe '/createbucket' ->
-  done <- specify 'should create a bucket'
-  err, req, res, data <- client.get '/createbucket'
-  expect err .to.be.null
-  expect data .to.match /^[0-9a-zA-Z]{40}$/
-  expect res.statusCode .to.equal 201
-  done!
+  specify 'should create a bucket' (done) ->
+    err, req, res, data <- client.get '/createbucket'
+    expect err .to.be.null
+    expect data .to.match /^[0-9a-zA-Z]{40}$/
+    expect res.statusCode .to.equal 201
+    done!
 
 describe '/setkey' ->
   bucket = ""
-  do 
-    done <- before
+  
+  before (done) ->
     err, req, res, data <- client.get '/createbucket'
     expect err .to.be.null
     expect data .to.match /^[0-9a-zA-Z]{40}$/
@@ -35,15 +35,13 @@ describe '/setkey' ->
     bucket := data
     done!
 
-  do 
-    done <- specify 'should set a key'
+  specify 'should set a key' (done) ->
     err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahhhh"
     expect err .to.be.null
     expect res.statusCode .to.equal 201
     done!
 
-  do 
-    done <- specify 'should fail on bad bucket'
+  specify 'should fail on bad bucket' (done) ->
     err, req, res, data <- client.get "/setkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/wazoo/zoowahhhh"
     expect err.message .to.equal 'No such bucket.'
     expect err.statusCode .to.equal 404
@@ -51,8 +49,7 @@ describe '/setkey' ->
 
 describe '/getkey' ->
   bucket = ""
-  do 
-    done <- before
+  before (done) ->
     err, req, res, data <- client.get '/createbucket'
     expect err .to.be.null
     expect data .to.match /^[0-9a-zA-Z]{40}$/
@@ -62,23 +59,20 @@ describe '/getkey' ->
     expect err .to.be.null
     done!
 
-  do 
-    done <- specify 'should get a key'
+  specify 'should get a key' (done) ->
     err, req, res, data <- client.get "/getkey/#{bucket}/mykey"
     expect err .to.be.null
     expect res.statusCode .to.equal 200
     expect data .to.equal "mydata"
     done!
 
-  do 
-    done <- specify 'should fail on bad bucket'
+  specify 'should fail on bad bucket' (done) ->
     err, req, res, data <-client.get "/getkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/mykey"
     expect err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
 
-  do 
-    done <- specify 'should fail on no key'
+  specify 'should fail on unknown key' (done) ->
     err, req, res, data <- client.get "/getkey/#{bucket}/nokey"
     expect err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
