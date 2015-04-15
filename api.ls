@@ -47,15 +47,17 @@ create_bucket = (req, res, next) ->
 
 setkey = (req, res, next) ->
   {bucket, key, value} = req.params
+
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
   return next err if err
   if result.isNotFound
      return next new restify.NotFoundError "No such bucket."
-  obj = new Riak.Commands.KV.RiakObject!
+
+  <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
-  <- storeValue bucket, key, obj
+
   res.send 201, "Value set."
   next!
 
