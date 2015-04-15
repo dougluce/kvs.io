@@ -2,13 +2,10 @@ require! {
   'basho-riak-client': Riak
   restify
   crypto
-  'urlsafe-base64'
   ipware
 }
 
-riak_client = new Riak.Client do
-  * 'toma.horph.com'
-    'orla.horph.com'
+riak_client = new Riak.Client ['toma.horph.com']
 
 fetchValue = (bucket, key, next) ->
   riak_client.fetchValue do
@@ -21,6 +18,7 @@ storeValue = (bucket, key, value, next) ->
   obj = new Riak.Commands.KV.RiakObject!
   obj.setContentType 'application/json'
   obj.setValue value
+  
   riak_client.storeValue do
     * bucket: bucket
       key: key
@@ -32,7 +30,8 @@ storeValue = (bucket, key, value, next) ->
 create_bucket = (req, res, next) ->
   crypto.randomBytes 30 (ex, buf) ->
     throw ex if ex
-    bucket_name = urlsafeBase64.encode buf      
+    # URL- and hostname-safe strings.
+    bucket_name = buf.toString('base64').replace(/\+/g, '0').replace(/\//g, '1')
     # Does this bucket exist?
     fetchValue 'buckets' bucket_name, (err, result) ->
       next err if err
@@ -44,10 +43,9 @@ create_bucket = (req, res, next) ->
         ip: ipware!.get_ip req
         date: new Date().toISOString()
         headers: req.headers
-      
       # Store headers.
       storeValue "buckets", bucket_name, value, ->
-        res.send 201, "Bucket #{bucket_name} created"
+        res.send 201, bucket_name
         next!
 
 setkey = (req, res, next) ->
@@ -81,13 +79,15 @@ getkey = (req, res, next) ->
       res.send result.values.shift!value.toString 'utf8'
       next!
 
-server = restify.createServer!
-server.get '/createbucket/', create_bucket
-server.get '/setkey/:bucket/:key/:value', setkey
-server.get '/getkey/:bucket/:key', getkey
-server.on 'uncaughtException' (req, res, route, err) ->
-  console.log route
-  throw err
+exports.init = (server) ->
+  server.get '/createbucket/', create_bucket
+  server.get '/setkey/:bucket/:key/:value', setkey
+  server.get '/getkey/:bucket/:key', getkey
+  server.on 'uncaughtException' (req, res, route, err) ->
+    throw err
 
-server.listen 8080, ->
-  console.log '%s listening at %s', server.name, server.url
+if !module.parent # Run stand-alone
+  server = restify.createServer!
+  exports.init server
+  server.listen 8080, ->
+    console.log '%s listening at %s', server.name, server.url
