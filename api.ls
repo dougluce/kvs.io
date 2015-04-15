@@ -57,8 +57,7 @@ setkey = (req, res, next) ->
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
-
-  res.send 201, "Value set."
+  res.send 201
   next!
 
 getkey = (req, res, next) ->

@@ -40,7 +40,6 @@ describe '/setkey' ->
     err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahhhh"
     expect err .to.be.null
     expect res.statusCode .to.equal 201
-    expect data .to.equal "Value set."
     done!
 
   do 
