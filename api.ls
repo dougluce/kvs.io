@@ -15,13 +15,12 @@ fetchValue = (bucket, key, next) ->
     next
 
 storeValue = (bucket, key, value, next) ->
-  riak_client.storeValue do
+  err, result <- riak_client.storeValue do
     * bucket: bucket
       key: key
       value: value
-    (err, result) ->
-      next err if err
-      next!
+  next err if err
+  next!
 
 create_bucket = (req, res, next) ->
   ex, buf <- crypto.randomBytes 30
@@ -86,15 +85,14 @@ delkey = (req, res, next) ->
   return next err if err
   if result.isNotFound
     return next new restify.NotFoundError "Entry not found."
-  riak_client.deleteValue do
+  err, result <- riak_client.deleteValue do
     * bucket: bucket
       key: key
-    (err, result) ->
-      return next err if err
-      if not result
-        return next new restify.NotFoundError "Entry not found."
-      res.send 204
-      next!
+  return next err if err
+  if not result
+    return next new restify.NotFoundError "Entry not found."
+  res.send 204
+  next!
 
 exports.init = (server) ->
   server.get '/createbucket/', create_bucket
