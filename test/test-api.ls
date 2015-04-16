@@ -102,3 +102,18 @@ describe '/delkey' ->
     expect err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
+
+describe '/listkeys' ->
+  bucket = ""
+
+  before (done) ->
+    (new_bucket) <- createbucket 
+    bucket := new_bucket
+    setkey bucket, done
+
+  specify 'should list keys' (done) ->
+    err, req, res, data <- client.get "/listkeys/#{bucket}"
+    expect err .to.be.null
+    expect res.statusCode .to.equal 200
+    expect data .to.equal '["wazoo"]'
+    done!
