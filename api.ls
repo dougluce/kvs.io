@@ -23,7 +23,7 @@ storeValue = (bucket, key, value, next) ->
   next!
 
 create_bucket = (req, res, next) ->
-  ex, buf <- crypto.randomBytes 30
+  ex, buf <- crypto.randomBytes 15
   throw ex if ex
   # URL- and hostname-safe strings.
   bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
@@ -37,7 +37,7 @@ create_bucket = (req, res, next) ->
   # Mark this bucket as taken and record by whom.
   value =
     ip: ipware!get_ip req
-    date: new Date().toISOString()
+    date: new Date!toISOString!
     headers: req.headers
   # Store headers.
   <- storeValue "buckets", bucket_name, value
@@ -95,10 +95,13 @@ delkey = (req, res, next) ->
   next!
 
 exports.init = (server) ->
-  server.get '/createbucket/', create_bucket
-  server.get '/setkey/:bucket/:key/:value', setkey
-  server.get '/getkey/:bucket/:key', getkey
-  server.get '/delkey/:bucket/:key', delkey
+  server.get '/createbucket/' create_bucket
+  server.get '/setkey/:bucket/:key/:value' setkey
+  server.get '/getkey/:bucket/:key' getkey
+  server.get '/delkey/:bucket/:key' delkey
+  server.get '/listkeys/:bucket' listkeys
+  #delbucket
+  #listkeys
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
