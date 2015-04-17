@@ -5,7 +5,8 @@
   "main": "api.ls",
   "scripts": {
     "start": "nodemon -L -e ls --exec lsc api.ls",
-    "test": "nodemon -L -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test"
+    "test": "mocha --reporter spec --compilers ls:LiveScript --growl test",
+    "testmon": "nodemon -L -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test"
   },
   "author": "Doug Luce",
   "license": "ISC",
