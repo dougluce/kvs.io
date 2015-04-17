@@ -23,8 +23,8 @@ createbucket = (done) ->
   expect res.statusCode .to.equal 201
   done data
 
-setkey = (bucket, done) ->
-  err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahhhh"
+setkey = (bucket, done, key = "wazoo") ->
+  err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/zoowahhhh"
   expect err .to.be.null
   expect res.statusCode .to.equal 201
   done!
@@ -109,11 +109,25 @@ describe '/listkeys' ->
   before (done) ->
     (new_bucket) <- createbucket 
     bucket := new_bucket
+    <- setkey bucket, _, "woohoo"
+    <- setkey bucket, _, "werp"
+    <- setkey bucket, _, "StaggeringlyLessEfficient"
+    <- setkey bucket, _, "EatingItStraightOutOfTheBag"
     setkey bucket, done
 
-  specify 'should list keys' (done) ->
+  specify.only 'should list keys' (done) ->
     err, req, res, data <- client.get "/listkeys/#{bucket}"
     expect err .to.be.null
     expect res.statusCode .to.equal 200
-    expect data .to.equal '["wazoo"]'
+    objs = JSON.parse data
+    expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
     done!
+
+# Stuff still to test:
+# If the client asks for JSON, give them json!
+# All Sorts of Keys and Values Encoding:
+#  - Unicode
+#  - Lengths:
+#  - 0, 1, max-1, max, max+1
+#   SuperHuge
+

@@ -5,7 +5,7 @@ require! {
   ipware
 }
 
-riak_client = new Riak.Client ['toma.horph.com']
+riak_client = new Riak.Client ['127.0.0.1']
 
 fetchValue = (bucket, key, next) ->
   riak_client.fetchValue do
@@ -102,11 +102,14 @@ listkeys = (req, res, next) ->
   if result.isNotFound
      return next new restify.NotFoundError "Entry not found."
   # Does the entry exist?
-  err, result <- riak_client.listKeys do
+  err, result <- riak_client.secondaryIndexQuery do
     * bucket: bucket
+      indexName: '$bucket'
+      indexKey: '_'
       stream: false
   return next err if err
-  res.send JSON.stringify(result.keys)
+  values = [..objectKey for result.values]
+  res.send JSON.stringify(values)
   next!
 
 exports.init = (server) ->
