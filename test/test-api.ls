@@ -115,7 +115,7 @@ describe '/listkeys' ->
     <- setkey bucket, _, "EatingItStraightOutOfTheBag"
     setkey bucket, done
 
-  specify.only 'should list keys' (done) ->
+  specify 'should list keys' (done) ->
     err, req, res, data <- client.get "/listkeys/#{bucket}"
     expect err .to.be.null
     expect res.statusCode .to.equal 200
