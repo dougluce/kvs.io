@@ -15,6 +15,9 @@ json_client = restify.createJsonClient do
   * version: '*'
     url: 'http://127.0.0.1:8088'
 
+KEYLENGTH = 256 # Significant length of keys.
+VALUELENGTH = 65536 # Significant length of values
+
 before (done) ->
   <- server.listen 8088
   console.log '%s server listening at %s', server.name, server.url
@@ -27,10 +30,11 @@ createbucket = (done) ->
   expect res.statusCode .to.equal 201
   done data
 
-setkey = (bucket, done, key = "wazoo") ->
-  err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/zoowahhhh"
-  expect err, err .to.be.null
-  expect res.statusCode .to.equal 201
+setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
+  err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
+  expect data, "setkey data" .to.be.empty
+  expect err, "setkey #{err}" .to.be.null
+  expect res.statusCode, "setkey status" .to.equal 201
   done!
 
 describe '/createbucket' ->
@@ -51,9 +55,55 @@ describe '/setkey' ->
     
   specify 'should fail on bad bucket' (done) ->
     err, req, res, data <- client.get "/setkey/SUPERBADBUCKETHERE/wazoo/zoowahhhh"
-    expect err.message .to.equal 'No such bucket.'
+    expect data .to.equal err.message .to.equal 'No such bucket.'
     expect err.statusCode .to.equal 404
     done!
+
+  describe "only the first #{KEYLENGTH} key chars count. " (done) ->
+    basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
+
+    specify 'Add one to get the full length' (done) ->
+      <- setkey bucket, _, basekey + "EXTRASTUFF"
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}E"
+      expect data .to.equal "zoowahhhh"
+      expect err, err .to.be.null
+      expect res.statusCode .to.equal 200
+      done!
+
+    specify 'Add a bunch, but only the first is going to count.' (done) ->
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
+      expect data .to.equal "zoowahhhh"
+      expect err, err .to.be.null
+      expect res.statusCode .to.equal 200
+      done!
+
+    specify 'Getting the original base key (one too short) should fail.' (done) ->
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}"
+      expect data .to.equal err.message .to.equal 'Entry not found.'
+      expect err.statusCode .to.equal 404
+      done!
+
+  describe "only the first #{VALUELENGTH} value chars count." (done) ->
+    basevalue = Array VALUELENGTH .join 'v' # VALUELENGTH-1 length string
+    key = "setkey-valuetest"
+
+    specify 'Add one to get the full length' (done) ->
+      <- setkey bucket, _, key, "#{basevalue}E"
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+      expect data.length .to.equal VALUELENGTH
+      expect data .to.equal "#{basevalue}E"
+      expect err, err .to.be.null
+      expect res.statusCode .to.equal 200
+      done!
+
+    specify 'Value too long?  It gets chopped.' (done) ->
+      <- setkey bucket, _, key, "#{basevalue}EECHEEWAMAA"
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+      expect data.length .to.equal VALUELENGTH
+      expect data.slice -10 .to.equal 'vvvvvvvvvE'
+      expect err, err .to.be.null
+      expect res.statusCode .to.equal 200
+      done!
 
 describe '/getkey' ->
   bucket = ""
@@ -64,20 +114,20 @@ describe '/getkey' ->
 
   specify 'should get a key' (done) ->
     err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
+    expect data .to.equal "zoowahhhh"
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
-    expect data .to.equal "zoowahhhh"
     done!
 
   specify 'should fail on bad bucket' (done) ->
     err, req, res, data <-client.get "/getkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/mykey"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
 
   specify 'should fail on unknown key' (done) ->
     err, req, res, data <- client.get "/getkey/#{bucket}/nokey"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
 
@@ -91,28 +141,57 @@ describe '/delkey' ->
 
   specify 'should delete a key' (done) ->
     err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
+    expect data .to.be.empty
     expect err, err .to.be.null
     expect res.statusCode .to.equal 204
     # Make sure it's gone.
     err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect res.statusCode .to.equal 404
     done!
 
   specify 'should fail on bad bucket' (done) ->
     err, req, res, data <-client.get "/delkey/1WKEcUzO2EHlgtqoUzhD/mykey"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
 
   specify 'should fail on unknown key' (done) ->
     err, req, res, data <- client.get "/delkey/#{bucket}/nomkey"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
+    
+  describe "only the first #{KEYLENGTH} key chars count" (done) ->
+    basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
 
+    specify 'Add one to get the full length' (done) ->
+      <- setkey bucket, _, basekey + "EXTRASTUFF"
+      err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}E"
+      expect data .to.be.empty
+      expect err, err .to.be.null
+      expect res.statusCode, "on E delete" .to.equal 204
+      done!
+  
+    specify 'Add a bunch, but only the first is going to count.' (done) ->
+      <- setkey bucket, _, basekey + "EXTRASTUFF"
+      err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
+      expect data .to.be.empty
+      expect err, err .to.be.null
+      expect res.statusCode, "on EYUPMAN delete" .to.equal 204
+      done!
+      
+    specify 'Deleting the original key (one too short) should fail.' (done) ->
+      <- setkey bucket, _, basekey + "EXTRASTUFF"
+      err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}"
+      expect data .to.equal err.message .to.equal 'Entry not found.'
+      expect err.statusCode, "on truncated delete" .to.equal 404
+      done!
+  
 describe '/listkeys' ->
   bucket = ""
+  
+  basekey = Array KEYLENGTH .join 'x' # For key length checking
 
   before (done) ->
     (new_bucket) <- createbucket 
@@ -121,6 +200,9 @@ describe '/listkeys' ->
     <- setkey bucket, _, "werp"
     <- setkey bucket, _, "StaggeringlyLessEfficient"
     <- setkey bucket, _, "EatingItStraightOutOfTheBag"
+    <- setkey bucket, _, "#{basekey}WHOP"
+    <- setkey bucket, _, "#{basekey}WERP" # Should get lost...
+    <- setkey bucket, _, "#{basekey}"
     setkey bucket, done
 
   specify 'should list keys' (done) ->
@@ -128,14 +210,14 @@ describe '/listkeys' ->
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
     objs = JSON.parse data
-    expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
+    expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
     done!
 
   specify 'should list JSON keys' (done) ->
     err, req, res, data <- json_client.get "/listkeys/#{bucket}"
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
-    expect data .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
+    expect data .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
     done!
 
 describe '/delbucket' ->
@@ -148,27 +230,30 @@ describe '/delbucket' ->
 
   specify 'should delete the bucket' (done) ->
     err, req, res, data <- client.get "/delbucket/#{bucket}"
+    expect data .to.be.empty
     expect err, err .to.be.null
     expect res.statusCode .to.equal 204
     done!
 
   specify 'should fail on unknown bucket' (done) ->
     err, req, res, data <-client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
-    expect err.message .to.equal 'Entry not found.'
+    expect data .to.equal err.message .to.equal 'Entry not found.'
     expect err.statusCode .to.equal 404
     done!
 
   specify 'should fail if bucket has entries' (done) ->
     <- setkey bucket, _, "Yup"
     err, req, res, data <- client.get "/delbucket/#{bucket}"
-    expect err.message .to.equal 'Remove all keys from the bucket first.'
+    expect data .to.equal err.message .to.equal 'Remove all keys from the bucket first.'
     expect err.statusCode .to.equal 403
     # Delete the key.
     err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
+    expect data .to.be.empty
     expect err, err .to.be.null
     expect res.statusCode .to.equal 204
     # Then try to delete the bucket again.
     err, req, res, data <- client.get "/delbucket/#{bucket}"
+    expect data .to.be.empty
     expect err, err .to.be.null
     expect res.statusCode .to.equal 204
     done!

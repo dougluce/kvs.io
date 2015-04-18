@@ -5,9 +5,13 @@ require! {
   ipware
 }
 
+MAXKEYLENGTH = 256
+MAXVALUELENGTH = 65536
+
 riak_client = new Riak.Client ['127.0.0.1']
 
 fetchValue = (bucket, key, next) ->
+  key .= substr 0, MAXKEYLENGTH
   riak_client.fetchValue do
     * bucket: bucket
       key: key
@@ -15,6 +19,7 @@ fetchValue = (bucket, key, next) ->
     next
 
 storeValue = (bucket, key, value, next) ->
+  key .= substr 0, MAXKEYLENGTH
   err, result <- riak_client.storeValue do
     * bucket: bucket
       key: key
@@ -72,6 +77,7 @@ delbucket = (req, res, next) ->
 
 setkey = (req, res, next) ->
   {bucket, key, value} = req.params
+  value .= substr 0, MAXVALUELENGTH
 
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
