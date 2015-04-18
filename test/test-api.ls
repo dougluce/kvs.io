@@ -261,63 +261,52 @@ describe '/delbucket' ->
     expect res.statusCode .to.equal 204
     done!
 
-describe 'Encodings' ->
+describe 'utf-8' ->
   bucket = ""
 
   before (done) ->
     (new_bucket) <- createbucket
     bucket := new_bucket
     done!
-
-  specify 'Greek' (done) ->
-    key = data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
-    <- setkey bucket, _, key, data
-    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-    expect data .to.equal data
-    expect err, err .to.be.null
-    expect res.statusCode .to.equal 200
-    done!
-
-  utf_case_run = (tag, utf_case) ->
+    
+  utf_case_get = (tag, key, value) ->
     specify tag, (done) ->
-      key = data = utf_case
-      <- setkey bucket, _, key, data
+      <- setkey bucket, _, key, value
       err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-      expect data .to.equal data
-      expect err, err .to.be.null
+      expect data .to.equal value
+      expect err, "get #{tag}: #{err}" .to.be.null
       expect res.statusCode .to.equal 200
       done!
 
-  describe.only 'UTF-8 get', (done) ->
-    for k,v of utfCases
-      utf_case_run k,v
+  utf_case_post = (tag, key, value) ->
+    specify tag, (done) ->
+      err, req, res, data <- client.post "/setkey" do
+        * bucket: bucket
+          key: key
+          value: value
+      expect err, "post #{tag}: #{err}" .to.be.null
+      expect res.statusCode .to.equal 201
 
-  specify 'URL-encoded Greek' (done) ->
-    key = querystring.escape '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;'
-    data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
-    <- setkey bucket, _, key, data
-    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-    expect data .to.equal data
-    expect err, err .to.be.null
-    expect res.statusCode .to.equal 200
-    done!
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+      expect err, "post-get #{tag}: #{err}" .to.be.null
+      expect res.statusCode .to.equal 200
+      expect data .to.equal value
 
-  specify 'POSTed Greek' (done) ->
-    key = data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
-    err, req, res, data <- client.post "/setkey" do
-      * bucket: bucket
-        key: key
-        value: data
-    expect data .to.equal data
-    expect err, err .to.be.null
-    expect res.statusCode .to.equal 201
+      done!
 
-    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-    expect data .to.equal data
-    expect err, err .to.be.null
-    expect res.statusCode .to.equal 200
+  describe 'gets' ->
+    for tag, utf_string of utfCases
+      utf_case_get tag, utf_string, utf_string
 
-    done!
+  describe 'URL-encoded gets' ->
+    for tag, utf_string of utfCases
+      key = querystring.escape he.encode utf_string
+      data = utf_string
+      utf_case_get tag, key, data
+
+  describe 'posts' ->
+    for tag, utf_string of utfCases
+      utf_case_post tag, utf_string, utf_string
 
 #
 # come up with a Riak-stubbed version for quicker unit
