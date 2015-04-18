@@ -1,6 +1,9 @@
 require! {
   chai: {expect}
   restify
+  he
+  querystring
+  './utf-cases'
   '../api'
 }
 
@@ -32,9 +35,9 @@ createbucket = (done) ->
 
 setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
   err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
-  expect data, "setkey data" .to.be.empty
   expect err, "setkey #{err}" .to.be.null
   expect res.statusCode, "setkey status" .to.equal 201
+  expect data, "setkey data" .to.be.empty
   done!
 
 describe '/createbucket' ->
@@ -258,10 +261,65 @@ describe '/delbucket' ->
     expect res.statusCode .to.equal 204
     done!
 
-# Still to test:
-# All Sorts of Keys and Values Encoding:
-#  - Unicode
-#  - Lengths:
-#  - 0, 1, max-1, max, max+1
-#   SuperHuge
+describe 'Encodings' ->
+  bucket = ""
 
+  before (done) ->
+    (new_bucket) <- createbucket
+    bucket := new_bucket
+    done!
+
+  specify 'Greek' (done) ->
+    key = data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
+    <- setkey bucket, _, key, data
+    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+    expect data .to.equal data
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 200
+    done!
+
+  utf_case_run = (tag, utf_case) ->
+    specify tag, (done) ->
+      key = data = utf_case
+      <- setkey bucket, _, key, data
+      err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+      expect data .to.equal data
+      expect err, err .to.be.null
+      expect res.statusCode .to.equal 200
+      done!
+
+  describe.only 'UTF-8 get', (done) ->
+    for k,v of utfCases
+      utf_case_run k,v
+
+  specify 'URL-encoded Greek' (done) ->
+    key = querystring.escape '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;'
+    data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
+    <- setkey bucket, _, key, data
+    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+    expect data .to.equal data
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 200
+    done!
+
+  specify 'POSTed Greek' (done) ->
+    key = data = he.decode '&#x3BA;&#x1F79;&#x3C3;&#x3BC;&#x3B5;';
+    err, req, res, data <- client.post "/setkey" do
+      * bucket: bucket
+        key: key
+        value: data
+    expect data .to.equal data
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 201
+
+    err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+    expect data .to.equal data
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 200
+
+    done!
+
+#
+# come up with a Riak-stubbed version for quicker unit
+# tests.
+#

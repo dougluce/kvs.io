@@ -156,8 +156,11 @@ contentTypeChecker = (req, res, next) ->
 
 exports.init = (server) ->
   server.use contentTypeChecker
+  server.use restify.bodyParser!
+
   server.get '/createbucket/' create_bucket
   server.get '/setkey/:bucket/:key/:value' setkey
+  server.post '/setkey' setkey
   server.get '/getkey/:bucket/:key' getkey
   server.get '/delkey/:bucket/:key' delkey
   server.get '/listkeys/:bucket' listkeys
