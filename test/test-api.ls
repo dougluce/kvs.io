@@ -22,14 +22,14 @@ before (done) ->
 
 createbucket = (done) ->
   err, req, res, data <- client.get '/createbucket'
-  expect err .to.be.null
+  expect err, err .to.be.null
   expect data .to.match /^[0-9a-zA-Z]{20}$/
   expect res.statusCode .to.equal 201
   done data
 
 setkey = (bucket, done, key = "wazoo") ->
   err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/zoowahhhh"
-  expect err .to.be.null
+  expect err, err .to.be.null
   expect res.statusCode .to.equal 201
   done!
 
@@ -64,7 +64,7 @@ describe '/getkey' ->
 
   specify 'should get a key' (done) ->
     err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
-    expect err .to.be.null
+    expect err, err .to.be.null
     expect res.statusCode .to.equal 200
     expect data .to.equal "zoowahhhh"
     done!
@@ -91,8 +91,12 @@ describe '/delkey' ->
 
   specify 'should delete a key' (done) ->
     err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
-    expect err .to.be.null
+    expect err, err .to.be.null
     expect res.statusCode .to.equal 204
+    # Make sure it's gone.
+    err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
+    expect err.message .to.equal 'Entry not found.'
+    expect res.statusCode .to.equal 404
     done!
 
   specify 'should fail on bad bucket' (done) ->
@@ -121,7 +125,7 @@ describe '/listkeys' ->
 
   specify 'should list keys' (done) ->
     err, req, res, data <- client.get "/listkeys/#{bucket}"
-    expect err .to.be.null
+    expect err, err .to.be.null
     expect res.statusCode .to.equal 200
     objs = JSON.parse data
     expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
