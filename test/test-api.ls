@@ -7,7 +7,11 @@ require! {
 server = restify.createServer!
 api.init server
 
-client = restify.createJsonClient do
+client = restify.createStringClient do
+  * version: '*'
+    url: 'http://127.0.0.1:8088'
+
+json_client = restify.createJsonClient do
   * version: '*'
     url: 'http://127.0.0.1:8088'
 
@@ -123,8 +127,13 @@ describe '/listkeys' ->
     expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
     done!
 
-# Stuff still to test:
-# If the client asks for JSON, give them json!
+  specify 'should list JSON keys' (done) ->
+    err, req, res, data <- json_client.get "/listkeys/#{bucket}"
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 200
+    expect data .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
+    done!
+
 # All Sorts of Keys and Values Encoding:
 #  - Unicode
 #  - Lengths:

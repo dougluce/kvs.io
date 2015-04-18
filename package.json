@@ -12,7 +12,6 @@
   "license": "ISC",
   "dependencies": {
     "basho-riak-client": "^1.0.1",
-    "bluebird": "^2.9.24",
     "ipware": "0.0.4",
     "restify": "^3.0.2"
   },

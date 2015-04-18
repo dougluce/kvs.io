@@ -109,10 +109,22 @@ listkeys = (req, res, next) ->
       stream: false
   return next err if err
   values = [..objectKey for result.values]
-  res.send JSON.stringify(values)
+  res.send if res.ct == 'text/plain'
+    JSON.stringify(values)
+  else
+    values
+  next!
+
+contentTypeChecker = (req, res, next) ->
+  # Favor JSON over text.
+  if req.accepts 'text/plain'
+    res.ct = 'text/plain'
+  if req.accepts 'application/json'
+    res.ct = 'application/json'
   next!
 
 exports.init = (server) ->
+  server.use contentTypeChecker
   server.get '/createbucket/' create_bucket
   server.get '/setkey/:bucket/:key/:value' setkey
   server.get '/getkey/:bucket/:key' getkey
