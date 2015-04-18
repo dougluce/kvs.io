@@ -44,6 +44,32 @@ create_bucket = (req, res, next) ->
   res.send 201, bucket_name
   next!
 
+delbucket = (req, res, next) ->
+  {bucket} = req.params
+  # Does this bucket exist?
+  err, result <- fetchValue 'buckets' bucket
+  return next err if err
+  if result.isNotFound
+     return next new restify.NotFoundError "Entry not found."
+  # Is there anything in the bucket?
+  err, result <- riak_client.secondaryIndexQuery do
+    * bucket: bucket
+      indexName: '$bucket'
+      indexKey: '_'
+      stream: false
+  return next err if err
+  if result.values.length > 0
+    return next new restify.ForbiddenError "Remove all keys from the bucket first."
+  # Nope, delete it.
+  err, result <- riak_client.deleteValue do
+    * bucket: 'buckets'
+      key: bucket
+  return next err if err
+  if not result
+    return next new restify.NotFoundError "Entry not found."
+  res.send 204
+  next!
+
 setkey = (req, res, next) ->
   {bucket, key, value} = req.params
 
@@ -101,7 +127,6 @@ listkeys = (req, res, next) ->
   return next err if err
   if result.isNotFound
      return next new restify.NotFoundError "Entry not found."
-  # Does the entry exist?
   err, result <- riak_client.secondaryIndexQuery do
     * bucket: bucket
       indexName: '$bucket'
@@ -130,7 +155,7 @@ exports.init = (server) ->
   server.get '/getkey/:bucket/:key' getkey
   server.get '/delkey/:bucket/:key' delkey
   server.get '/listkeys/:bucket' listkeys
-  #delbucket
+  server.get '/delbucket/:bucket' delbucket
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 

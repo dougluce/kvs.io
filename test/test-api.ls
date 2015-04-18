@@ -138,6 +138,42 @@ describe '/listkeys' ->
     expect data .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag"]
     done!
 
+describe '/delbucket' ->
+  bucket = ""
+
+  beforeEach (done) ->
+    (new_bucket) <- createbucket
+    bucket := new_bucket
+    done!
+
+  specify 'should delete the bucket' (done) ->
+    err, req, res, data <- client.get "/delbucket/#{bucket}"
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 204
+    done!
+
+  specify 'should fail on unknown bucket' (done) ->
+    err, req, res, data <-client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
+    expect err.message .to.equal 'Entry not found.'
+    expect err.statusCode .to.equal 404
+    done!
+
+  specify 'should fail if bucket has entries' (done) ->
+    <- setkey bucket, _, "Yup"
+    err, req, res, data <- client.get "/delbucket/#{bucket}"
+    expect err.message .to.equal 'Remove all keys from the bucket first.'
+    expect err.statusCode .to.equal 403
+    # Delete the key.
+    err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 204
+    # Then try to delete the bucket again.
+    err, req, res, data <- client.get "/delbucket/#{bucket}"
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 204
+    done!
+
+# Still to test:
 # All Sorts of Keys and Values Encoding:
 #  - Unicode
 #  - Lengths:
