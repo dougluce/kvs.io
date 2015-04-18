@@ -84,7 +84,6 @@ setkey = (req, res, next) ->
   return next err if err
   if result.isNotFound
      return next new restify.NotFoundError "No such bucket."
-
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
@@ -162,7 +161,9 @@ exports.init = (server) ->
   server.get '/setkey/:bucket/:key/:value' setkey
   server.post '/setkey' setkey
   server.get '/getkey/:bucket/:key' getkey
+  server.post '/getkey' getkey
   server.get '/delkey/:bucket/:key' delkey
+  server.post '/delkey' delkey
   server.get '/listkeys/:bucket' listkeys
   server.get '/delbucket/:bucket' delbucket
   req, res, route, err <- server.on 'uncaughtException' 

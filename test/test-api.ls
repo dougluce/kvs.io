@@ -269,44 +269,49 @@ describe 'utf-8' ->
     bucket := new_bucket
     done!
     
-  utf_case_get = (tag, key, value) ->
+  utf_case_get = (tag, utf_string) ->
+    # per rfc3986.txt, all URL's are %-encoded.
+    key = querystring.escape utf_string
     specify tag, (done) ->
-      <- setkey bucket, _, key, value
+      <- setkey bucket, _, key, querystring.escape utf_string
       err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-      expect data .to.equal value
+      # But we expect proper UTF-8 back.
+      expect data,"data no match" .to.equal utf_string
       expect err, "get #{tag}: #{err}" .to.be.null
       expect res.statusCode .to.equal 200
       done!
 
-  utf_case_post = (tag, key, value) ->
+  utf_case_post = (tag, utf_string) ->
     specify tag, (done) ->
       err, req, res, data <- client.post "/setkey" do
         * bucket: bucket
-          key: key
-          value: value
+          key: utf_string
+          value: utf_string
       expect err, "post #{tag}: #{err}" .to.be.null
       expect res.statusCode .to.equal 201
 
-      err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
+      err, req, res, data <- client.post "/getkey" do
+        * bucket: bucket
+          key: utf_string
       expect err, "post-get #{tag}: #{err}" .to.be.null
       expect res.statusCode .to.equal 200
-      expect data .to.equal value
+      expect data .to.equal utf_string
+
+      err, req, res, data <- client.post "/delkey" do
+        * bucket: bucket
+          key: utf_string
+      expect err, "post-get #{tag}: #{err}" .to.be.null
+      expect res.statusCode .to.equal 204
 
       done!
 
   describe 'gets' ->
     for tag, utf_string of utfCases
-      utf_case_get tag, utf_string, utf_string
-
-  describe 'URL-encoded gets' ->
-    for tag, utf_string of utfCases
-      key = querystring.escape he.encode utf_string
-      data = utf_string
-      utf_case_get tag, key, data
+      utf_case_get tag, utf_string
 
   describe 'posts' ->
-    for tag, utf_string of utfCases
-      utf_case_post tag, utf_string, utf_string
+    for tag, utf_string of {'d': utfCases['Danish']}
+      utf_case_post tag, utf_string
 
 #
 # come up with a Riak-stubbed version for quicker unit
