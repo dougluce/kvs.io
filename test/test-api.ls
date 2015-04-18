@@ -37,9 +37,6 @@ setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
   expect res.statusCode, "setkey status" .to.equal 201
   done!
 
-describe "Failing test!" ->
-  expect true .to.be.false
-
 describe '/createbucket' ->
   specify 'should create a bucket' (done) ->
     (new_bucket) <- createbucket
