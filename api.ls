@@ -8,43 +8,11 @@ require! {
 MAXKEYLENGTH = 256
 MAXVALUELENGTH = 65536
 
-riak_client = new Riak.Client ['127.0.0.1']
+#
+# Here to allow stubbing by tests.
+#
 
-mock_riak =
-  * 'rWULYcVlAyMGGEpSp0DA': {}
-    'buckets': {'rWULYcVlAyMGGEpSp0DA': 'yup'}
-
-DEBUG = false
-xriak_client =
-  fetchValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "fetching #bucket/#key" if DEBUG
-    unless mock_riak[bucket]
-      return cb null, {isNotFound: true, values: []}
-    unless mock_riak[bucket][key]
-      return cb null, {isNotFound: true, values: []}
-    cb null, {values: [mock_riak[bucket][key]]}
-  storeValue: (options, cb) ->
-    {bucket, key, value} = options
-    console.log "Storing #bucket/#key <- #value" if DEBUG
-    unless mock_riak[bucket]
-      mock_riak[bucket] = {}
-    mock_riak[bucket][key] = value
-    cb null, {}
-  secondaryIndexQuery: (options, cb) ->
-    {bucket, indexName, indexKey, stream} = options
-    if mock_riak[bucket] and Object.keys(mock_riak[bucket]).length > 0
-      values = []
-      for key in Object.keys(mock_riak[bucket])
-        values.push {indexKey: null, objectKey: key}
-      return cb null, {values: values}
-    cb null, {values: []}
-  deleteValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "Deleting #bucket/#key" if DEBUG
-    if mock_riak[bucket]
-      delete mock_riak[bucket][key]
-    cb null, true
+riak_client = null
 
 fetchValue = (bucket, key, next) ->
   key .= substr 0, MAXKEYLENGTH
@@ -190,6 +158,8 @@ contentTypeChecker = (req, res, next) ->
   next!
 
 exports.init = (server) ->
+  riak_client := new Riak.Client ['127.0.0.1']
+
   server.use contentTypeChecker
   server.use restify.bodyParser!
 

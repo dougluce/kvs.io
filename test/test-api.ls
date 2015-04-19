@@ -2,13 +2,16 @@ require! {
   chai: {expect}
   restify
   querystring
-  './utf-cases'
-  '../api'
+  sinon
   './utils': {setkey, after_all, createbucket}
+  './utf-cases'
+  'basho-riak-client': Riak
+  '../api'
 }
 
-server = restify.createServer!
-api.init server
+if process.env.STUBRIAK
+  sinon.stub Riak, "Client", ->
+    riak_client
 
 client = restify.createStringClient do
   * version: '*'
@@ -20,6 +23,45 @@ json_client = restify.createJsonClient do
 
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
+
+mock_riak =
+  * 'rWULYcVlAyMGGEpSp0DA': {}
+    'buckets': {'rWULYcVlAyMGGEpSp0DA': 'yup'}
+
+DEBUG = false
+riak_client =
+  fetchValue: (options, cb) ->
+    {bucket, key} = options
+    console.log "fetching #bucket/#key" if DEBUG
+    unless mock_riak[bucket]
+      return cb null, {isNotFound: true, values: []}
+    unless mock_riak[bucket][key]
+      return cb null, {isNotFound: true, values: []}
+    cb null, {values: [mock_riak[bucket][key]]}
+  storeValue: (options, cb) ->
+    {bucket, key, value} = options
+    console.log "Storing #bucket/#key <- #value" if DEBUG
+    unless mock_riak[bucket]
+      mock_riak[bucket] = {}
+    mock_riak[bucket][key] = value
+    cb null, {}
+  secondaryIndexQuery: (options, cb) ->
+    {bucket, indexName, indexKey, stream} = options
+    if mock_riak[bucket] and Object.keys(mock_riak[bucket]).length > 0
+      values = []
+      for key in Object.keys(mock_riak[bucket])
+        values.push {indexKey: null, objectKey: key}
+      return cb null, {values: values}
+    cb null, {values: []}
+  deleteValue: (options, cb) ->
+    {bucket, key} = options
+    console.log "Deleting #bucket/#key" if DEBUG
+    if mock_riak[bucket]
+      delete mock_riak[bucket][key]
+    cb null, true
+
+server = restify.createServer!
+api.init server
 
 before (done) ->
   <- server.listen 8088
