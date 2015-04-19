@@ -4,7 +4,7 @@
   "description": "kvs.io initial go",
   "main": "api.ls",
   "scripts": {
-    "start": "NODE_ENV=development lsc api.ls",
+    "start": "NODE_ENV=production lsc api.ls",
     "test": "NODE_ENV=test mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
     "startdev": "NODE_ENV=development nodemon -L -e ls --exec lsc api.ls",
     "testmon": "NODE_ENV=development nodemon -L -e ls node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls"

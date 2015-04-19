@@ -19,7 +19,6 @@ async.each bucks, (bucket, done) ->
     console.log "Errored on #bucket"
     return done err
   else
-    err, req, res, data <- client.get "/delbucket/#{bucket}"
     console.log "Done with #bucket"
     done!
 , (err) ->
