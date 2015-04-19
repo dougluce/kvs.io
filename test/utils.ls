@@ -10,7 +10,7 @@ require! {
 # cleanly disposed of later.
 #
 
-BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
+exports.BUCKETLIST = BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
 
 now = new Date!
 client = json_client = null

@@ -8,7 +8,6 @@
     "test": "NODE_ENV=test mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
     "startdev": "NODE_ENV=development nodemon -L -e ls --exec lsc api.ls",
     "testmon": "NODE_ENV=development nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
-
   },
   "author": "Doug Luce",
   "license": "ISC",

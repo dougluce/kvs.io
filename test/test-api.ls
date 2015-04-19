@@ -3,13 +3,14 @@ require! {
   restify
   querystring
   sinon
-  './utils': {setkey, after_all, createbucket, clients}
+  './utils': {setkey, after_all, createbucket, clients, BUCKETLIST}
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
+  domain
 }
 
-if process.env.STUBRIAK
+if process.env.NODE_ENV != 'test'
   sinon.stub Riak, "Client", ->
     riak_client
 
@@ -18,52 +19,63 @@ if process.env.STUBRIAK
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
-mock_riak =
-  * 'rWULYcVlAyMGGEpSp0DA': {}
-    'buckets': {'rWULYcVlAyMGGEpSp0DA': 'yup'}
+stub_riak =
+  * "#BUCKETLIST": {}
+    'buckets': {"#BUCKETLIST": 'yup'}
 
 DEBUG = false
 riak_client =
   fetchValue: (options, cb) ->
     {bucket, key} = options
     console.log "fetching #bucket/#key" if DEBUG
-    unless mock_riak[bucket]
+    unless stub_riak[bucket]
       return cb null, {isNotFound: true, values: []}
-    unless mock_riak[bucket][key]
+    unless stub_riak[bucket][key]
       return cb null, {isNotFound: true, values: []}
-    cb null, {values: [mock_riak[bucket][key]]}
+    cb null, {values: [stub_riak[bucket][key]]}
   storeValue: (options, cb) ->
     {bucket, key, value} = options
     console.log "Storing #bucket/#key <- #value" if DEBUG
-    unless mock_riak[bucket]
-      mock_riak[bucket] = {}
-    mock_riak[bucket][key] = value
+    unless stub_riak[bucket]
+      stub_riak[bucket] = {}
+    stub_riak[bucket][key] = value
     cb null, {}
   secondaryIndexQuery: (options, cb) ->
     {bucket, indexName, indexKey, stream} = options
-    if mock_riak[bucket] and Object.keys(mock_riak[bucket]).length > 0
+    if stub_riak[bucket] and Object.keys(stub_riak[bucket]).length > 0
       values = []
-      for key in Object.keys(mock_riak[bucket])
+      for key in Object.keys(stub_riak[bucket])
         values.push {indexKey: null, objectKey: key}
       return cb null, {values: values}
     cb null, {values: []}
   deleteValue: (options, cb) ->
     {bucket, key} = options
     console.log "Deleting #bucket/#key" if DEBUG
-    if mock_riak[bucket]
-      delete mock_riak[bucket][key]
+    if stub_riak[bucket]
+      delete stub_riak[bucket][key]
     cb null, true
 
 server = restify.createServer!
 api.init server
 
 before (done) ->
-  <- server.listen 8088
-  console.log '%s server listening at %s', server.name, server.url
-  done!
+  @timeout 3000
+  runServer = ->
+    <- server.listen 8088
+    console.log '%s server listening at %s', server.name, server.url
+    done!
+  domain.create!
+    ..on 'error' (err) ->
+      if /EADDRINUSE/ == err
+        <- setTimeout _, 100
+        console.log "Re-running on #err"
+        return runServer!
+      else
+        throw err
+    ..run runServer
 
 after (done) ->
-  @timeout 100000
+  @timeout 100000 if process.env.NODE_ENV == 'test'
   after_all done
 
 describe '/createbucket' ->
