@@ -229,6 +229,7 @@ describe '/listkeys' ->
   basekey = Array KEYLENGTH .join 'x' # For key length checking
 
   before (done) ->
+    @timeout 10000
     (new_bucket) <- createbucket true
     bucket := new_bucket
     <- setkey bucket, _, "woohoo"
