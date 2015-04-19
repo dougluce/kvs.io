@@ -3,7 +3,7 @@ require! {
   restify
   querystring
   sinon
-  './utils': {setkey, after_all, createbucket}
+  './utils': {setkey, after_all, createbucket, clients}
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
@@ -13,13 +13,7 @@ if process.env.STUBRIAK
   sinon.stub Riak, "Client", ->
     riak_client
 
-client = restify.createStringClient do
-  * version: '*'
-    url: 'http://127.0.0.1:8088'
-
-json_client = restify.createJsonClient do
-  * version: '*'
-    url: 'http://127.0.0.1:8088'
+[client, json_client] = clients!
 
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values

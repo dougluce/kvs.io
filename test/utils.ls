@@ -5,17 +5,22 @@ require! {
   restify
 }
 
-client = restify.createStringClient do
-  * version: '*'
-    url: 'http://127.0.0.1:8088'
-    
-json_client = restify.createJsonClient do
-  * version: '*'
-    url: 'http://127.0.0.1:8088'
-    
 # Things to kill before I die
 BUCKETLIST = "rWULYcVlAyMGGEpSp0DA"
+
 now = new Date!
+client = json_client = null
+
+exports.clients = (port = 8088) ->
+  client := restify.createStringClient do
+    * version: '*'
+      url: "http://127.0.0.1:#port"
+      
+  json_client := restify.createJsonClient do
+    * version: '*'
+      url: "http://127.0.0.1:#port"
+
+  return [client, json_client]
 
 exports.setkey = setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
   err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
@@ -52,13 +57,16 @@ exports.createbucket = (mark, done) ->
   done data
 
 # Delete everything in a bucket
-deleteall = (bucket, done) ->
+exports.deleteall = (bucket, done) ->
   keys = []
   <- async.doWhilst (cb) ->
     err, req, res, data <- json_client.get "/listkeys/#{bucket}"
     keys = data
-    expect err, "deleteall from #bucket #{err}" .to.be.null
-    expect res.statusCode .to.equal 200
+    try
+      expect err, "deleteall from #bucket #{err}" .to.be.null
+      expect res.statusCode .to.equal 200
+    catch
+      return cb e
     async.each data, (key, done) ->
       err, req, res, data <- client.post "/delkey" do
         * bucket: bucket
@@ -67,14 +75,17 @@ deleteall = (bucket, done) ->
     , cb
   , -> (keys.length > 0)
   err, req, res, data <- client.get "/delbucket/#{bucket}"
-  expect err, "delbucket #err" .to.be.null
-  expect res.statusCode .to.equal 204
-  expect data .to.be.empty
+  try
+    expect err, "delbucket #err" .to.be.null
+    expect res.statusCode .to.equal 204
+    expect data .to.be.empty
+  catch
+    return done e
   done!
 
 exports.after_all = (done) ->
   async.each test_buckets, (bucket, done) ->
-    <- deleteall bucket
+    <- exports.deleteall bucket
     err, req, res, data <- client.get "/listkeys/#{BUCKETLIST}"
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
@@ -82,17 +93,3 @@ exports.after_all = (done) ->
   , done
 
 
-#
-# Utility function for manual cleanup tasks.  Takes an array of bucket
-# names to destroy.
-#
-
-exports.cleanup = (bucks, done) ->
-  async.each bucks, (bucket, done) ->
-    err, req, res, data <- client.get "/delbucket/#{bucket}"
-    expect data .to.be.empty
-    expect err, err .to.be.null
-    expect res.statusCode .to.equal 204
-    done!
-  , ->
-    done!

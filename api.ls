@@ -1,8 +1,12 @@
 require! {
   'basho-riak-client': Riak
   restify
+  bunyan
+  'bunyan-prettystream': PrettyStream
+  readline
   crypto
   ipware
+  net
 }
 
 MAXKEYLENGTH = 256
@@ -31,7 +35,7 @@ storeValue = (bucket, key, value, next) ->
   next err if err
   next!
 
-create_bucket = (req, res, next) ->
+function create_bucket req, res, next
   ex, buf <- crypto.randomBytes 15
   throw ex if ex
   # URL- and hostname-safe strings.
@@ -53,7 +57,7 @@ create_bucket = (req, res, next) ->
   res.send 201, bucket_name
   next!
 
-delbucket = (req, res, next) ->
+function delbucket req, res, next
   {bucket} = req.params
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
@@ -79,7 +83,7 @@ delbucket = (req, res, next) ->
   res.send 204
   next!
 
-setkey = (req, res, next) ->
+function setkey req, res, next
   {bucket, key, value} = req.params
   value .= substr 0, MAXVALUELENGTH
 
@@ -94,7 +98,7 @@ setkey = (req, res, next) ->
   res.send 201
   next!
 
-getkey = (req, res, next) ->
+function getkey req, res, next
   {bucket, key} = req.params
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
@@ -108,7 +112,7 @@ getkey = (req, res, next) ->
   res.send result.values.shift!value.toString 'utf8'
   next!
 
-delkey = (req, res, next) ->
+function delkey req, res, next
   {bucket, key} = req.params
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
@@ -129,7 +133,7 @@ delkey = (req, res, next) ->
   res.send 204
   next!
 
-listkeys = (req, res, next) ->
+function listkeys req, res, next
   {bucket} = req.params
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
@@ -149,13 +153,44 @@ listkeys = (req, res, next) ->
     values
   next!
 
-contentTypeChecker = (req, res, next) ->
+rh = 0
+function contentTypeChecker req, res, next
+  res.setHeader 'Server' 'ksv.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
   # Favor JSON over text.
   if req.accepts 'text/plain'
     res.ct = 'text/plain'
   if req.accepts 'application/json'
     res.ct = 'application/json'
   next!
+
+cli_setup = (socket) ->
+  rl = null
+  # Main CLI command processor
+  cli = (line) ->
+    if line == 'quit'
+      return socket.end!
+    rl.prompt!
+
+  # Setup code
+  buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
+  socket.write buf, 'binary'
+
+  got_options = false
+  option_checker = (data) ->
+    if data.readUInt8(0) == 255
+      got_options := true
+  socket.on 'data', option_checker
+  <- setTimeout _, 1000 # To allow for option eating
+  
+  socket.removeListener 'data', option_checker
+  rl := readline.createInterface socket, socket, null, got_options
+    ..setPrompt '>'
+    ..on 'line' cli
+    ..output.write '\r                 \r' # Clear options
+    ..prompt!
+
+function cli_handler req, socket, head
+  cli_setup socket
 
 exports.init = (server) ->
   riak_client := new Riak.Client ['127.0.0.1']
@@ -172,11 +207,28 @@ exports.init = (server) ->
   server.post '/delkey' delkey
   server.get '/listkeys/:bucket' listkeys
   server.get '/delbucket/:bucket' delbucket
+  server.get '/noop' (rq, rs, nx) -> rs.send 200; nx! 
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
+prettyStdOut = new PrettyStream!
+prettyStdOut.pipe process.stdout
+
 if !module.parent # Run stand-alone
-  server = restify.createServer!
+  server = restify.createServer do
+    name: 'ksv.io'
+  server.server.on 'connect' cli_handler
+  server.on 'after' restify.auditLogger do
+    * log: bunyan.createLogger(
+      * name: 'audit'
+        stream: prettyStdOut
+        type: 'raw'
+      )
   exports.init server
   <- server.listen 8080
   console.log '%s listening at %s', server.name, server.url
+
+  s = net.createServer (socket) -> cli_setup socket
+  s.maxConnections = 10;
+  s.listen 7002
+
