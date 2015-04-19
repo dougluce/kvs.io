@@ -4,149 +4,62 @@ require! {
   bunyan
   'bunyan-prettystream': PrettyStream
   readline
-  crypto
   ipware
   net
+  './commands'
 }
 
-MAXKEYLENGTH = 256
-MAXVALUELENGTH = 65536
-
 #
-# Here to allow stubbing by tests.
+# Restify route handlers
 #
-
-riak_client = null
-
-fetchValue = (bucket, key, next) ->
-  key .= substr 0, MAXKEYLENGTH
-  riak_client.fetchValue do
-    * bucket: bucket
-      key: key
-      convertToJs: false
-    next
-
-storeValue = (bucket, key, value, next) ->
-  key .= substr 0, MAXKEYLENGTH
-  err, result <- riak_client.storeValue do
-    * bucket: bucket
-      key: key
-      value: value
-  next err if err
-  next!
 
 function create_bucket req, res, next
-  ex, buf <- crypto.randomBytes 15
-  throw ex if ex
-  # URL- and hostname-safe strings.
-  bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket_name
-  return next err if err
-  if not result.isNotFound
+  (err, bucket_name) <- commands.create_bucket req.headers, ipware!get_ip req
+  if err == 'bucket already exists'
      # This should never happen.
      return next new restify.InternalServerError \
-       "Error, cannot create bucket #{bucket_name}."
-  # Mark this bucket as taken and record by whom.
-  value =
-    ip: ipware!get_ip req
-    date: new Date!toISOString!
-    headers: req.headers
-  # Store headers.
-  <- storeValue "buckets", bucket_name, value
+       "cannot create bucket #{bucket_name}."
+  return next err if err
   res.send 201, bucket_name
   next!
 
 function delbucket req, res, next
   {bucket} = req.params
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
+  err <- commands.delbucket bucket
+  return next new restify.NotFoundError "Entry not found." if err == 'not found'
+  return next new restify.ForbiddenError "Remove all keys from the bucket first." if err == 'not empty'
   return next err if err
-  if result.isNotFound
-     return next new restify.NotFoundError "Entry not found."
-  # Is there anything in the bucket?
-  err, result <- riak_client.secondaryIndexQuery do
-    * bucket: bucket
-      indexName: '$bucket'
-      indexKey: '_'
-      stream: false
-  return next err if err
-  if result.values.length > 0
-    return next new restify.ForbiddenError "Remove all keys from the bucket first."
-  # Nope, delete it.
-  err, result <- riak_client.deleteValue do
-    * bucket: 'buckets'
-      key: bucket
-  return next err if err
-  if not result
-    return next new restify.NotFoundError "Entry not found."
   res.send 204
   next!
 
 function setkey req, res, next
   {bucket, key, value} = req.params
-  value .= substr 0, MAXVALUELENGTH
-
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return next err if err
-  if result.isNotFound
-     return next new restify.NotFoundError "No such bucket."
-  <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
-    ..setContentType 'text/plain'
-    ..setValue value
+  err <- commands.setkey bucket, key, value
+  return next new restify.NotFoundError "No such bucket." if err == 'not found'
   res.send 201
   next!
 
 function getkey req, res, next
   {bucket, key} = req.params
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
+  err, value <- commands.getkey bucket, key
+  return next new restify.NotFoundError "Entry not found." if err == 'not found'
   return next err if err
-  if result.isNotFound
-     return next new restify.NotFoundError "Entry not found."
-  err, result <- fetchValue bucket, key
-  return next err if err
-  if result.isNotFound
-    return next new restify.NotFoundError "Entry not found."
-  res.send result.values.shift!value.toString 'utf8'
+  res.send value
   next!
 
 function delkey req, res, next
   {bucket, key} = req.params
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
+  err <- commands.delkey bucket, key
+  return next new restify.NotFoundError "Entry not found." if err == 'not found'
   return next err if err
-  if result.isNotFound
-     return next new restify.NotFoundError "Entry not found."
-  # Does the entry exist?
-  err, result <- fetchValue bucket, key
-  return next err if err
-  if result.isNotFound
-    return next new restify.NotFoundError "Entry not found."
-  err, result <- riak_client.deleteValue do
-    * bucket: bucket
-      key: key
-  return next err if err
-  if not result
-    return next new restify.NotFoundError "Entry not found."
   res.send 204
   next!
 
 function listkeys req, res, next
   {bucket} = req.params
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
+  err, values <- commands.listkeys bucket
+  return next new restify.NotFoundError "Entry not found." if err == 'not found'
   return next err if err
-  if result.isNotFound
-     return next new restify.NotFoundError "Entry not found."
-  err, result <- riak_client.secondaryIndexQuery do
-    * bucket: bucket
-      indexName: '$bucket'
-      indexKey: '_'
-      stream: false
-  return next err if err
-  values = [..objectKey for result.values]
   res.send if res.ct == 'text/plain'
     JSON.stringify(values)
   else
@@ -193,8 +106,7 @@ function cli_handler req, socket, head
   cli_setup socket
 
 exports.init = (server) ->
-  riak_client := new Riak.Client ['127.0.0.1']
-
+  commands.init!
   server.use contentTypeChecker
   server.use restify.bodyParser!
 
