@@ -8,14 +8,14 @@ require! {
 MAXKEYLENGTH = 256
 MAXVALUELENGTH = 65536
 
-xriak_client = new Riak.Client ['127.0.0.1']
+riak_client = new Riak.Client ['127.0.0.1']
 
 mock_riak =
   * 'rWULYcVlAyMGGEpSp0DA': {}
     'buckets': {'rWULYcVlAyMGGEpSp0DA': 'yup'}
 
 DEBUG = false
-riak_client =
+xriak_client =
   fetchValue: (options, cb) ->
     {bucket, key} = options
     console.log "fetching #bucket/#key" if DEBUG
