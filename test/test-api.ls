@@ -1,7 +1,6 @@
 require! {
   chai: {expect}
   restify
-  he
   querystring
   './utf-cases'
   '../api'
