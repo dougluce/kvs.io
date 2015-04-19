@@ -5,8 +5,12 @@ require! {
   restify
 }
 
-# Things to kill before I die
-BUCKETLIST = "rWULYcVlAyMGGEpSp0DA"
+#
+# Set keys for test buckets in this bucket, so they can be
+# cleanly disposed of later.
+#
+
+BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
 
 now = new Date!
 client = json_client = null
