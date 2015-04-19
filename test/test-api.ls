@@ -5,6 +5,7 @@ require! {
   querystring
   './utf-cases'
   '../api'
+  './utils': {setkey, after_all, createbucket}
 }
 
 server = restify.createServer!
@@ -26,19 +27,9 @@ before (done) ->
   console.log '%s server listening at %s', server.name, server.url
   done!
 
-createbucket = (done) ->
-  err, req, res, data <- client.get '/createbucket'
-  expect err, err .to.be.null
-  expect data .to.match /^[0-9a-zA-Z]{20}$/
-  expect res.statusCode .to.equal 201
-  done data
-
-setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
-  err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
-  expect err, "setkey #{err}" .to.be.null
-  expect res.statusCode, "setkey status" .to.equal 201
-  expect data, "setkey data" .to.be.empty
-  done!
+after (done) ->
+  @timeout 100000
+  after_all done
 
 describe '/createbucket' ->
   specify 'should create a bucket' (done) ->
@@ -310,7 +301,7 @@ describe 'utf-8' ->
       utf_case_get tag, utf_string
 
   describe 'posts' ->
-    for tag, utf_string of {'d': utfCases['Danish']}
+    for tag, utf_string of utfCases
       utf_case_post tag, utf_string
 
 #
