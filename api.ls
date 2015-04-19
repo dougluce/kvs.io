@@ -13,58 +13,54 @@ require! {
 # Restify route handlers
 #
 
+handle_error = (err, next, good) ->
+  if err == 'bucket already exists' # This should never happen!!
+    return next new restify.InternalServerError \
+      "cannot create bucket #{bucket_name}."
+  return next new restify.NotFoundError "Entry not found." if err == 'not found'
+  return next new restify.ForbiddenError "Remove all keys from the bucket first." if err == 'not empty'
+  return next new restify.NotFoundError "No such bucket." if err == 'no such bucket'
+  return next err if err
+  good! # If there's no error, continue on!
+  next!
+  
 function create_bucket req, res, next
   (err, bucket_name) <- commands.create_bucket req.headers, ipware!get_ip req
-  if err == 'bucket already exists'
-     # This should never happen.
-     return next new restify.InternalServerError \
-       "cannot create bucket #{bucket_name}."
-  return next err if err
+  <- handle_error err, next
   res.send 201, bucket_name
-  next!
 
 function delbucket req, res, next
   {bucket} = req.params
   err <- commands.delbucket bucket
-  return next new restify.NotFoundError "Entry not found." if err == 'not found'
-  return next new restify.ForbiddenError "Remove all keys from the bucket first." if err == 'not empty'
-  return next err if err
+  <- handle_error err, next
   res.send 204
-  next!
 
 function setkey req, res, next
   {bucket, key, value} = req.params
   err <- commands.setkey bucket, key, value
-  return next new restify.NotFoundError "No such bucket." if err == 'not found'
+  <- handle_error err, next
   res.send 201
-  next!
 
 function getkey req, res, next
   {bucket, key} = req.params
   err, value <- commands.getkey bucket, key
-  return next new restify.NotFoundError "Entry not found." if err == 'not found'
-  return next err if err
+  <- handle_error err, next
   res.send value
-  next!
 
 function delkey req, res, next
   {bucket, key} = req.params
   err <- commands.delkey bucket, key
-  return next new restify.NotFoundError "Entry not found." if err == 'not found'
-  return next err if err
+  <- handle_error err, next
   res.send 204
-  next!
 
 function listkeys req, res, next
   {bucket} = req.params
   err, values <- commands.listkeys bucket
-  return next new restify.NotFoundError "Entry not found." if err == 'not found'
-  return next err if err
+  <- handle_error err, next
   res.send if res.ct == 'text/plain'
     JSON.stringify(values)
   else
     values
-  next!
 
 rh = 0
 function contentTypeChecker req, res, next
@@ -143,4 +139,3 @@ if !module.parent # Run stand-alone
   s = net.createServer (socket) -> cli_setup socket
   s.maxConnections = 10;
   s.listen 7002
-

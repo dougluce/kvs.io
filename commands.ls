@@ -85,7 +85,7 @@ export setkey = (bucket, key, value, cb) ->
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
   return cb err if err
-  return cb 'not found' if result.isNotFound
+  return cb 'no such bucket' if result.isNotFound
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
