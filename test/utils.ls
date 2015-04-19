@@ -34,18 +34,19 @@ setkey_json = (bucket, done, key = "wazoo", value="zoowahhhh") ->
   expect data, "setkey data" .to.be.empty
   done!
 
-
 test_buckets = [] # Keep track of for later removal.
 
-exports.createbucket = (done) ->
+# Mark means to mark it for later deletion.
+# Set false for tests that will delete the bucket.
+exports.createbucket = (mark, done) ->
   err, req, res, data <- client.get '/createbucket'
-  expect err, err .to.be.null
+  expect err, "createbucket #err" .to.be.null
   expect data .to.match /^[0-9a-zA-Z]{20}$/
   expect res.statusCode .to.equal 201
   # Mark this bucket as being a test one.
   <- setkey_json data, _, "testbucketinfo", "Run on #{os.hostname!} at #now"
   # Track this bucket locally
-  test_buckets.push data
+  test_buckets.push data if mark
   # and globally, for later cleanup.
   <- setkey_json BUCKETLIST, _, data, "Run on #{os.hostname!} at #now"
   done data
@@ -74,7 +75,6 @@ deleteall = (bucket, done) ->
 exports.after_all = (done) ->
   async.each test_buckets, (bucket, done) ->
     <- deleteall bucket
-    return done!
     err, req, res, data <- client.get "/listkeys/#{BUCKETLIST}"
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200

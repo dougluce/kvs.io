@@ -32,14 +32,14 @@ after (done) ->
 
 describe '/createbucket' ->
   specify 'should create a bucket' (done) ->
-    (new_bucket) <- createbucket
+    (new_bucket) <- createbucket true
     done!
 
 describe '/setkey' ->
   bucket = ""
   
   before (done) ->
-    (new_bucket) <- createbucket 
+    (new_bucket) <- createbucket true
     bucket := new_bucket
     done!
 
@@ -101,7 +101,7 @@ describe '/setkey' ->
 describe '/getkey' ->
   bucket = ""
   before (done) ->
-    (new_bucket) <- createbucket 
+    (new_bucket) <- createbucket true
     bucket := new_bucket
     setkey bucket, done
 
@@ -128,7 +128,7 @@ describe '/delkey' ->
   bucket = ""
 
   before (done) ->
-    (new_bucket) <- createbucket 
+    (new_bucket) <- createbucket true
     bucket := new_bucket
     setkey bucket, done
 
@@ -187,7 +187,7 @@ describe '/listkeys' ->
   basekey = Array KEYLENGTH .join 'x' # For key length checking
 
   before (done) ->
-    (new_bucket) <- createbucket 
+    (new_bucket) <- createbucket true
     bucket := new_bucket
     <- setkey bucket, _, "woohoo"
     <- setkey bucket, _, "werp"
@@ -203,25 +203,29 @@ describe '/listkeys' ->
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
     objs = JSON.parse data
-    expect objs .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
+    expect objs .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
     done!
 
   specify 'should list JSON keys' (done) ->
     err, req, res, data <- json_client.get "/listkeys/#{bucket}"
     expect err, err .to.be.null
     expect res.statusCode .to.equal 200
-    expect data .to.have.members ["wazoo","werp","woohoo","StaggeringlyLessEfficient","EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
+    expect data .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
     done!
 
 describe '/delbucket' ->
   bucket = ""
 
   beforeEach (done) ->
-    (new_bucket) <- createbucket
+    (new_bucket) <- createbucket false
     bucket := new_bucket
     done!
 
   specify 'should delete the bucket' (done) ->
+    err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
+    expect data .to.be.empty
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 204
     err, req, res, data <- client.get "/delbucket/#{bucket}"
     expect data .to.be.empty
     expect err, err .to.be.null
@@ -239,7 +243,11 @@ describe '/delbucket' ->
     err, req, res, data <- client.get "/delbucket/#{bucket}"
     expect data .to.equal err.message .to.equal 'Remove all keys from the bucket first.'
     expect err.statusCode .to.equal 403
-    # Delete the key.
+    # Delete the keys.
+    err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
+    expect data .to.be.empty
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 204
     err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
     expect data .to.be.empty
     expect err, err .to.be.null
@@ -255,7 +263,7 @@ describe 'utf-8' ->
   bucket = ""
 
   before (done) ->
-    (new_bucket) <- createbucket
+    (new_bucket) <- createbucket true
     bucket := new_bucket
     done!
     
@@ -302,8 +310,3 @@ describe 'utf-8' ->
   describe 'posts' ->
     for tag, utf_string of utfCases
       utf_case_post tag, utf_string
-
-#
-# come up with a Riak-stubbed version for quicker unit
-# tests.
-#
