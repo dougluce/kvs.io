@@ -65,7 +65,7 @@ function listkeys req, res, next
 
 rh = 0
 function contentTypeChecker req, res, next
-  res.setHeader 'Server' 'ksv.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
+  res.setHeader 'Server' 'kvs.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
   # Favor JSON over text.
   if req.accepts 'text/plain'
     res.ct = 'text/plain'
@@ -125,7 +125,7 @@ prettyStdOut.pipe process.stdout
 
 if !module.parent # Run stand-alone
   server = restify.createServer do
-    name: 'ksv.io'
+    name: 'kvs.io'
   server.server.on 'connect' cli_handler
   server.on 'after' restify.auditLogger do
     * log: bunyan.createLogger(
