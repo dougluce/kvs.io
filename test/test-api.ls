@@ -124,7 +124,11 @@ describe "API" ->
       done!
   
     specify 'should set a key' (done) ->
-      setkey bucket, done
+      err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahharf"
+      expect err, "api.setkey #bucket #err" .to.be.null
+      expect res.statusCode, "setkey status" .to.equal 201
+      expect data, "setkey data" .to.be.empty
+      done!
       
     specify 'should fail on bad bucket' (done) ->
       err, req, res, data <- client.get "/setkey/SUPERBADBUCKETHERE/wazoo/zoowahhhh"
@@ -143,9 +147,12 @@ describe "API" ->
         expect res.statusCode .to.equal 200
         done!
   
-      specify 'Add a bunch, but only the first is going to count.' (done) ->
+      specify 'Add a bunch, only the last counts.' (done) ->
+        <- setkey bucket, _, basekey + "EXTRASTUFF", 'one'
+        <- setkey bucket, _, basekey + "ENTRANCE", 'two'
+        <- setkey bucket, _, basekey + "EPBBBBB", 'three'
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
-        expect data .to.equal "zoowahhhh"
+        expect data .to.equal "three"
         expect err, err .to.be.null
         expect res.statusCode .to.equal 200
         done!
@@ -267,7 +274,6 @@ describe "API" ->
     basekey = Array KEYLENGTH .join 'x' # For key length checking
   
     before (done) ->
-      @timeout 10000
       (new_bucket) <- createbucket true
       bucket := new_bucket
       <- setkey bucket, _, "woohoo"
