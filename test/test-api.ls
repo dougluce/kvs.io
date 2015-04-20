@@ -11,10 +11,6 @@ require! {
   domain
 }
 
-if process.env.NODE_ENV != 'test'
-  sinon.stub Riak, "Client", ->
-    riak_client
-
 [client, json_client] = clients!
 
 KEYLENGTH = 256 # Significant length of keys.
@@ -25,7 +21,7 @@ stub_riak =
     'buckets': {"#BUCKETLIST": 'yup'}
 
 DEBUG = false
-riak_client =
+stub_riak_client =
   fetchValue: (options, cb) ->
     {bucket, key} = options
     console.log "fetching #bucket/#key" if DEBUG
@@ -56,11 +52,20 @@ riak_client =
       delete stub_riak[bucket][key]
     cb null, true
 
-server = restify.createServer!
-api.init server
+server = null
+sandbox = null
 
 before (done) ->
   @timeout 3000
+
+  sandbox := sinon.sandbox.create!
+  if process.env.NODE_ENV != 'test'
+    sandbox.stub Riak, "Client", ->
+      stub_riak_client
+
+  server := restify.createServer!
+  api.init server
+
   runServer = ->
     <- server.listen 8088
     console.log '%s server listening at %s', server.name, server.url
@@ -77,7 +82,9 @@ before (done) ->
 
 after (done) ->
   @timeout 100000 if process.env.NODE_ENV == 'test'
-  after_all done
+  <- after_all
+  sandbox.restore!
+  done!
 
 describe '/createbucket' ->
   specify 'should create a bucket' (done) ->
@@ -374,10 +381,25 @@ describe 'utf-8' ->
 
       done!
 
-  describe 'gets' ->
-    for tag, utf_string of utfCases
-      utf_case_get tag, utf_string
+  #
+  # Trim the huge number of UTF cases in development to shorten test
+  # runs while still getting some coverage.
+  #
+  if process.env.NODE_ENV == 'development'
+    driver = (case_runner) ->
+      keys = Object.keys utfCases
+      for til 10
+        key_number = Math.floor(keys.length * Math.random())
+        tag = keys.splice(key_number,1)
+        utf_string = utfCases[tag]
+        case_runner(tag, utf_string)
+  else
+    driver = (case_runner) ->
+      for tag, utf_string of utfCases
+        case_runner tag, utf_string
 
+  describe 'gets' ->
+    driver utf_case_get
+    
   describe 'posts' ->
-    for tag, utf_string of utfCases
-      utf_case_post tag, utf_string
+    driver utf_case_post
