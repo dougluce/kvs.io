@@ -248,28 +248,19 @@ describe "Commands" ->
       @timeout 10000
       (new_bucket) <- createbucket true
       bucket := new_bucket
-      <- setkey bucket, _, "woohoo"
-      <- setkey bucket, _, "werp"
-      <- setkey bucket, _, "StaggeringlyLessEfficient"
-      <- setkey bucket, _, "EatingItStraightOutOfTheBag"
-      <- setkey bucket, _, "#{basekey}WHOP"
-      <- setkey bucket, _, "#{basekey}WERP" # Should get lost...
-      <- setkey bucket, _, "#{basekey}"
-      setkey bucket, done
-  
-    specify 'should list keys' (done) ->
-      err, req, res, data <- client.get "/listkeys/#{bucket}"
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 200
-      objs = JSON.parse data
-      expect objs .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
+      <- commands.setkey bucket, "woohoo", "value here"
+      <- commands.setkey bucket, "werp", "value here"
+      <- commands.setkey bucket, "StaggeringlyLessEfficient", "value here"
+      <- commands.setkey bucket, "EatingItStraightOutOfTheBag", "value here"
+      <- commands.setkey bucket, "#{basekey}WHOP", "value here"
+      <- commands.setkey bucket, "#{basekey}WERP", "value here" # Should get lost...
+      <- commands.setkey bucket, "#{basekey}", "value here"
       done!
   
-    specify 'should list JSON keys' (done) ->
-      err, req, res, data <- json_client.get "/listkeys/#{bucket}"
+    specify 'should list keys' (done) ->
+      err, values <- commands.listkeys bucket
       expect err, err .to.be.null
-      expect res.statusCode .to.equal 200
-      expect data .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
+      expect values .to.have.members ["testbucketinfo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
       done!
   
   describe '/delbucket' ->
@@ -278,44 +269,30 @@ describe "Commands" ->
     beforeEach (done) ->
       (new_bucket) <- createbucket false
       bucket := new_bucket
+      <- commands.setkey bucket, "junkbucketfufto", 'whatyo'
       done!
   
     specify 'should delete the bucket' (done) ->
-      err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
-      expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
-      err, req, res, data <- client.get "/delbucket/#{bucket}"
-      expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      err <- commands.delkey bucket, "junkbucketfufto"
+      expect err, err .to.be.undefined
+      err <- commands.delbucket bucket
+      expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
   
     specify 'should fail on unknown bucket' (done) ->
-      err, req, res, data <-client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
-      expect data .to.equal err.message .to.equal 'Entry not found.'
-      expect err.statusCode .to.equal 404
+      err <- commands.delkey bucket, "1WKEcUzO2EHlgtqoUzhD"
+      expect err, err .to.equal 'not found'
       done!
   
     specify 'should fail if bucket has entries' (done) ->
-      <- setkey bucket, _, "Yup"
-      err, req, res, data <- client.get "/delbucket/#{bucket}"
-      expect data .to.equal err.message .to.equal 'Remove all keys from the bucket first.'
-      expect err.statusCode .to.equal 403
+      err <- commands.delbucket bucket
+      expect err, "second err" .to.equal 'not empty'
       # Delete the keys.
-      err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
-      expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
-      err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
-      expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      err <- commands.delkey bucket, "junkbucketfufto"
+      expect err, err .to.be.undefined  # TODO: UNIFY THESE!!!
       # Then try to delete the bucket again.
-      err, req, res, data <- client.get "/delbucket/#{bucket}"
-      expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      err <- commands.delbucket bucket
+      expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
   
   describe 'utf-8' ->
@@ -326,42 +303,6 @@ describe "Commands" ->
       bucket := new_bucket
       done!
       
-    utf_case_get = (tag, utf_string) ->
-      # per rfc3986.txt, all URL's are %-encoded.
-      key = querystring.escape utf_string
-      specify tag, (done) ->
-        <- setkey bucket, _, key, querystring.escape utf_string
-        err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
-        # But we expect proper UTF-8 back.
-        expect data,"data no match" .to.equal utf_string
-        expect err, "get #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 200
-        done!
-  
-    utf_case_post = (tag, utf_string) ->
-      specify tag, (done) ->
-        err, req, res, data <- client.post "/setkey" do
-          * bucket: bucket
-            key: utf_string
-            value: utf_string
-        expect err, "post #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 201
-  
-        err, req, res, data <- client.post "/getkey" do
-          * bucket: bucket
-            key: utf_string
-        expect err, "post-get #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 200
-        expect data .to.equal utf_string
-  
-        err, req, res, data <- client.post "/delkey" do
-          * bucket: bucket
-            key: utf_string
-        expect err, "post-get #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 204
-  
-        done!
-  
     #
     # Trim the huge number of UTF cases in development to shorten test
     # runs while still getting some coverage.
@@ -380,7 +321,13 @@ describe "Commands" ->
           case_runner tag, utf_string
   
     describe 'gets' ->
-      driver utf_case_get
-      
-    describe 'posts' ->
-      driver utf_case_post
+      driver (tag, utf_string) ->
+        specify tag, (done) ->
+          err <- commands.setkey bucket, utf_string, utf_string
+          expect err, "UCG1 err" .to.be.undefined
+          err, value <- commands.getkey bucket, utf_string
+          expect err, "UCG2 err" .to.be.null      
+          expect value,"value no match" .to.equal utf_string
+          done!
+  
+
