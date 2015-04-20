@@ -3,10 +3,9 @@ require! {
   restify
   bunyan
   'bunyan-prettystream': PrettyStream
-  readline
   ipware
-  net
   './commands'
+  './cli'
 }
 
 #
@@ -73,35 +72,6 @@ function contentTypeChecker req, res, next
     res.ct = 'application/json'
   next!
 
-cli_setup = (socket) ->
-  rl = null
-  # Main CLI command processor
-  cli = (line) ->
-    if line == 'quit'
-      return socket.end!
-    rl.prompt!
-
-  # Setup code
-  buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
-  socket.write buf, 'binary'
-
-  got_options = false
-  option_checker = (data) ->
-    if data.readUInt8(0) == 255
-      got_options := true
-  socket.on 'data', option_checker
-  <- setTimeout _, 1000 # To allow for option eating
-  
-  socket.removeListener 'data', option_checker
-  rl := readline.createInterface socket, socket, null, got_options
-    ..setPrompt '>'
-    ..on 'line' cli
-    ..output.write '\r                 \r' # Clear options
-    ..prompt!
-
-function cli_handler req, socket, head
-  cli_setup socket
-
 exports.init = (server) ->
   commands.init!
   server.use contentTypeChecker
@@ -126,17 +96,14 @@ prettyStdOut.pipe process.stdout
 if !module.parent # Run stand-alone
   server = restify.createServer do
     name: 'kvs.io'
-  server.server.on 'connect' cli_handler
   server.on 'after' restify.auditLogger do
     * log: bunyan.createLogger(
       * name: 'audit'
         stream: prettyStdOut
         type: 'raw'
       )
+  cli server
   exports.init server
   <- server.listen 8080
   console.log '%s listening at %s', server.name, server.url
 
-  s = net.createServer (socket) -> cli_setup socket
-  s.maxConnections = 10;
-  s.listen 7002
