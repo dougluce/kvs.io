@@ -7,6 +7,7 @@ require! {
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
+  crypto
   domain
 }
 
@@ -81,6 +82,27 @@ after (done) ->
 describe '/createbucket' ->
   specify 'should create a bucket' (done) ->
     (new_bucket) <- createbucket true
+    done!
+
+  specify 'crypto error on bucket creation' sinon.test (done) ->
+    @stub crypto, "randomBytes", (count, cb) ->
+      cb "Crypto error"
+    err, req, res, data <- client.get '/createbucket'
+    expect data .to.equal err.message .to.equal 'Crypto error'
+    expect err.statusCode .to.equal 500
+    expect res.statusCode .to.equal 500
+    done!
+
+  specify 'Bad bucket creation error' sinon.test (done) ->
+    @stub crypto, "randomBytes", (count, cb) ->
+      cb null, "INEXPLICABLYSAMERANDOMDATA"
+    err, req, res, data <- client.get '/createbucket'
+    expect data .to.equal "INEXPLICABLYSAMERANDOMDATA"
+    expect err, err .to.be.null
+    expect res.statusCode .to.equal 201
+    err, req, res, data <- client.get '/createbucket'
+    expect data .to.equal err.message .to.equal 'cannot create bucket.'
+    expect err.statusCode .to.equal res.statusCode .to.equal 500
     done!
 
 describe '/setkey' ->

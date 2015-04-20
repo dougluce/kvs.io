@@ -14,13 +14,14 @@ require! {
 #
 
 handle_error = (err, next, good) ->
-  if err == 'bucket already exists' # This should never happen!!
-    return next new restify.InternalServerError \
-      "cannot create bucket #{bucket_name}."
-  return next new restify.NotFoundError "Entry not found." if err == 'not found'
-  return next new restify.ForbiddenError "Remove all keys from the bucket first." if err == 'not empty'
-  return next new restify.NotFoundError "No such bucket." if err == 'no such bucket'
-  return next err if err
+  errors = 
+    'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
+    'not found': [restify.NotFoundError, "Entry not found."]
+    'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
+    'no such bucket': [restify.NotFoundError, "No such bucket."]
+  if errors[err]
+    return next new that.0 that.1
+  return next new restify.InternalServerError err if err # May leak errors externally
   good! # If there's no error, continue on!
   next!
   

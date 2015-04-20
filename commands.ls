@@ -7,11 +7,7 @@ require! {
 MAXKEYLENGTH = 256
 MAXVALUELENGTH = 65536
 
-#
-# Here to allow stubbing by tests.
-#
-
-riak_client = null
+riak_client = null # Here to allow stubbing by tests.
 
 fetchValue = (bucket, key, next) ->
   key .= substr 0, MAXKEYLENGTH
@@ -23,12 +19,11 @@ fetchValue = (bucket, key, next) ->
 
 storeValue = (bucket, key, value, next) ->
   key .= substr 0, MAXKEYLENGTH
-  err, result <- riak_client.storeValue do
+  riak_client.storeValue do
     * bucket: bucket
       key: key
       value: value
-  next err if err
-  next!
+    next
 
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
