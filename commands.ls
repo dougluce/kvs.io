@@ -84,7 +84,7 @@ export setkey = (bucket, key, value, cb) ->
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
-  cb!
+  cb null
 
 export getkey = (bucket, key, cb) ->
   # Does this bucket exist?
@@ -111,4 +111,4 @@ export delkey = (bucket, key, cb) ->
       key: key
   return next err if err
   return 'not found' if result.isNotFound
-  cb!
+  cb null

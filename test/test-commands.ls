@@ -105,7 +105,7 @@ describe "Commands" ->
   
     specify 'should set a key' (done) ->
       err <- commands.setkey bucket, "whatta", "maroon"
-      expect err,err .to.be.undefined
+      expect err,err .to.be.null
       done!
 
     specify 'should fail on bad bucket' (done) ->
@@ -118,7 +118,7 @@ describe "Commands" ->
   
       specify 'Add one to get the full length' (done) ->
         err <- commands.setkey bucket, basekey + "EXTRASTUFF", 'verlue'
-        expect err,err .to.be.undefined
+        expect err,err .to.be.null
         err, value <- commands.getkey bucket, basekey + "E"
         expect err,err .to.be.null
         expect value .to.equal "verlue"
@@ -128,7 +128,7 @@ describe "Commands" ->
         err <- commands.setkey bucket, basekey + "EJOINDER", 'verlue'
         err <- commands.setkey bucket, basekey + "EYUPNO", 'varloe'
         err <- commands.setkey bucket, basekey + "EYUPYUP", 'verlux'
-        expect err,err .to.be.undefined
+        expect err,err .to.be.null
 
         err, value <- commands.getkey bucket, basekey + "EYUPMAN"
         expect err,err .to.be.null
@@ -200,7 +200,7 @@ describe "Commands" ->
       
     specify 'should delete a key' (done) ->
       err <- commands.delkey bucket, 'parzoo'
-      expect err, err .to.be.undefined
+      expect err, err .to.be.null
       # Make sure it's gone.
       err, value <- commands.getkey bucket, 'parzoo'
       expect err .to.equal 'not found'
@@ -224,13 +224,13 @@ describe "Commands" ->
       specify 'Add one to get the full length' (done) ->
         <- commands.setkey bucket, basekey + "EXTRASTUFF", "hamzoo"
         err <- commands.delkey bucket, "#{basekey}E"
-        expect err, err .to.be.undefined
+        expect err, err .to.be.null
         done!
     
       specify 'Add a bunch, but only the first is going to count.' (done) ->
         <- commands.setkey bucket, basekey + "EXTRASTUFF", 'whatta'
         err <- commands.delkey bucket, "#{basekey}EYUPMAN"
-        expect err, err .to.be.undefined
+        expect err, err .to.be.null
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
@@ -274,7 +274,7 @@ describe "Commands" ->
   
     specify 'should delete the bucket' (done) ->
       err <- commands.delkey bucket, "junkbucketfufto"
-      expect err, err .to.be.undefined
+      expect err, err .to.be.null
       err <- commands.delbucket bucket
       expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
@@ -289,7 +289,7 @@ describe "Commands" ->
       expect err, "second err" .to.equal 'not empty'
       # Delete the keys.
       err <- commands.delkey bucket, "junkbucketfufto"
-      expect err, err .to.be.undefined  # TODO: UNIFY THESE!!!
+      expect err, err .to.be.null  # TODO: UNIFY THESE!!!
       # Then try to delete the bucket again.
       err <- commands.delbucket bucket
       expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
@@ -324,7 +324,7 @@ describe "Commands" ->
       driver (tag, utf_string) ->
         specify tag, (done) ->
           err <- commands.setkey bucket, utf_string, utf_string
-          expect err, "UCG1 err" .to.be.undefined
+          expect err, "UCG1 err" .to.be.null
           err, value <- commands.getkey bucket, utf_string
           expect err, "UCG2 err" .to.be.null      
           expect value,"value no match" .to.equal utf_string
