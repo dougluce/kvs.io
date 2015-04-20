@@ -3,7 +3,7 @@ require! {
   restify
   querystring
   sinon
-  './utils': {setkey, after_all, createbucket, clients, BUCKETLIST}
+  './utils': {setkey, after_all, createbucket, clients, BUCKETLIST, mark_bucket}
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
@@ -110,6 +110,7 @@ describe "API" ->
       expect data .to.equal "INEXPLICABLYSAMERANDOMDATA"
       expect err, err .to.be.null
       expect res.statusCode .to.equal 201
+      <- mark_bucket "INEXPLICABLYSAMERANDOMDATA"
       err, req, res, data <- client.get '/createbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
@@ -221,7 +222,7 @@ describe "API" ->
   
     specify 'should delete a key' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
-      expect data .to.be.empty
+      expect data, "should delete a key" .to.be.empty
       expect err, err .to.be.null
       expect res.statusCode .to.equal 204
       # Make sure it's gone.
@@ -248,7 +249,7 @@ describe "API" ->
       specify 'Add one to get the full length' (done) ->
         <- setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}E"
-        expect data .to.be.empty
+        expect data, "full length" .to.be.empty
         expect err, err .to.be.null
         expect res.statusCode, "on E delete" .to.equal 204
         done!
@@ -256,7 +257,7 @@ describe "API" ->
       specify 'Add a bunch, but only the first is going to count.' (done) ->
         <- setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
-        expect data .to.be.empty
+        expect data, "add a bunch" .to.be.empty
         expect err, err .to.be.null
         expect res.statusCode, "on EYUPMAN delete" .to.equal 204
         done!
@@ -305,16 +306,17 @@ describe "API" ->
   
     beforeEach (done) ->
       (new_bucket) <- createbucket false
+      <- setkey new_bucket, _, "someDamnedThing"
       bucket := new_bucket
       done!
   
     specify 'should delete the bucket' (done) ->
-      err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
-      expect data .to.be.empty
+      err, req, res, data <- client.get "/delkey/#{bucket}/someDamnedThing"
+      expect data, "should delete bucket" .to.be.empty
       expect err, err .to.be.null
       expect res.statusCode .to.equal 204
       err, req, res, data <- client.get "/delbucket/#{bucket}"
-      expect data .to.be.empty
+      expect data, "should delete bucket 2" .to.be.empty
       expect err, err .to.be.null
       expect res.statusCode .to.equal 204
       done!
@@ -331,8 +333,8 @@ describe "API" ->
       expect data .to.equal err.message .to.equal 'Remove all keys from the bucket first.'
       expect err.statusCode .to.equal 403
       # Delete the keys.
-      err, req, res, data <- client.get "/delkey/#{bucket}/testbucketinfo"
-      expect data .to.be.empty
+      err, req, res, data <- client.get "/delkey/#{bucket}/someDamnedThing"
+      expect data, "should fail if entries" .to.be.empty
       expect err, err .to.be.null
       expect res.statusCode .to.equal 204
       err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
