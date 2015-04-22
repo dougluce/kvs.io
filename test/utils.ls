@@ -80,7 +80,7 @@ export mark_bucket = (bucket, done) ->
   
 # Mark means to mark it for later deletion.
 # Set false for tests that will delete the bucket.
-export createbucket = (mark, done) ->
+export newbucket = (mark, done) ->
   ex, buf <- crypto.randomBytes 15
   expect ex .to.be.null
   # URL- and hostname-safe strings.

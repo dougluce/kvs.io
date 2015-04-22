@@ -3,7 +3,7 @@ require! {
   restify
   querystring
   sinon
-  './utils': {setkey, after_all, createbucket, clients, BUCKETLIST, mark_bucket}
+  './utils': {setkey, after_all, newbucket, clients, BUCKETLIST, mark_bucket}
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
@@ -89,15 +89,15 @@ describe "API" ->
     sandbox.restore!
     done!
   
-  describe '/createbucket' ->
+  describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb "Crypto error"
-      err, req, res, data <- client.get '/createbucket'
+      err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'Crypto error'
       expect err.statusCode .to.equal 500
       expect res.statusCode .to.equal 500
@@ -106,12 +106,12 @@ describe "API" ->
     specify 'Bad bucket creation error' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb null, "INEXPLICABLYSAMERANDOMDATA"
-      err, req, res, data <- client.get '/createbucket'
+      err, req, res, data <- client.get '/newbucket'
       expect data .to.equal "INEXPLICABLYSAMERANDOMDATA"
       expect err, err .to.be.null
       expect res.statusCode .to.equal 201
       <- mark_bucket "INEXPLICABLYSAMERANDOMDATA"
-      err, req, res, data <- client.get '/createbucket'
+      err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
       done!
@@ -120,7 +120,7 @@ describe "API" ->
     bucket = ""
     
     before (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       bucket := new_bucket
       done!
   
@@ -189,7 +189,7 @@ describe "API" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       bucket := new_bucket
       setkey bucket, done
   
@@ -216,7 +216,7 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       bucket := new_bucket
       setkey bucket, done
   
@@ -275,7 +275,7 @@ describe "API" ->
     basekey = Array KEYLENGTH .join 'x' # For key length checking
   
     before (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       bucket := new_bucket
       <- setkey bucket, _, "woohoo"
       <- setkey bucket, _, "werp"
@@ -305,7 +305,7 @@ describe "API" ->
     bucket = ""
   
     beforeEach (done) ->
-      (new_bucket) <- createbucket false
+      (new_bucket) <- newbucket false
       <- setkey new_bucket, _, "someDamnedThing"
       bucket := new_bucket
       done!
@@ -352,7 +352,7 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- createbucket true
+      (new_bucket) <- newbucket true
       bucket := new_bucket
       done!
       

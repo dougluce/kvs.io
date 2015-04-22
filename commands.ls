@@ -28,7 +28,7 @@ storeValue = (bucket, key, value, next) ->
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
-export create_bucket = (info, ip, cb) ->
+export new_bucket = (info, ip, cb) ->
   ex, buf <- crypto.randomBytes 15
   return cb ex if ex
   # URL- and hostname-safe strings.
