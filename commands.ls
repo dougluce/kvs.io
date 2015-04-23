@@ -28,7 +28,8 @@ storeValue = (bucket, key, value, next) ->
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
-export new_bucket = (info, ip, cb) ->
+export newbucket = (info, ip, cb) ->
+  console.log "YEAH!! #cb"
   ex, buf <- crypto.randomBytes 15
   return cb ex if ex
   # URL- and hostname-safe strings.
@@ -43,7 +44,15 @@ export new_bucket = (info, ip, cb) ->
     date: new Date!toISOString!
     info: info # Additional info identifying bucket creator
   <- storeValue "buckets", bucket_name, value
-  cb null, bucket_name  
+  cb null, bucket_name
+
+newbucket.params =
+  info: "Information goes here"
+  ip: "IP goes here"
+
+newbucket.doc = """
+A new bucket will be created and the bucket name given.
+"""
 
 export listkeys = (bucket, cb) ->
   # Does this bucket exist?
@@ -58,6 +67,11 @@ export listkeys = (bucket, cb) ->
   return cb err if err
   values = [..objectKey for result.values]
   cb null, values
+listkeys.params =
+  bucket: "Bucket to list keys in"
+listkeys.doc = """
+List the keys in a bucket.
+"""
 
 export delbucket = (bucket, cb) ->
   # Does this bucket exist?

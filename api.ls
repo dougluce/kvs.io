@@ -24,8 +24,8 @@ handle_error = (err, next, good) ->
   good! # If there's no error, continue on!
   next!
   
-function new_bucket req, res, next
-  (err, bucket_name) <- commands.new_bucket req.headers, ipware!get_ip req
+function newbucket req, res, next
+  (err, bucket_name) <- commands.newbucket req.headers, ipware!get_ip req
   <- handle_error err, next
   res.send 201, bucket_name
 
@@ -77,7 +77,7 @@ exports.init = (server) ->
   server.use contentTypeChecker
   server.use restify.bodyParser!
 
-  server.get '/newbucket/' new_bucket
+  server.get '/newbucket/' newbucket
   server.get '/setkey/:bucket/:key/:value' setkey
   server.post '/setkey' setkey
   server.get '/getkey/:bucket/:key' getkey

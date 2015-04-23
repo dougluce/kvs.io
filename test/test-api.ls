@@ -91,7 +91,7 @@ describe "API" ->
   
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      (new_bucket) <- newbucket true
+      (newbucket) <- newbucket true
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
@@ -120,8 +120,8 @@ describe "API" ->
     bucket = ""
     
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       done!
   
     specify 'should set a key' (done) ->
@@ -189,8 +189,8 @@ describe "API" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       setkey bucket, done
   
     specify 'should get a key' (done) ->
@@ -216,8 +216,8 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       setkey bucket, done
   
     specify 'should delete a key' (done) ->
@@ -275,8 +275,8 @@ describe "API" ->
     basekey = Array KEYLENGTH .join 'x' # For key length checking
   
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       <- setkey bucket, _, "woohoo"
       <- setkey bucket, _, "werp"
       <- setkey bucket, _, "StaggeringlyLessEfficient"
@@ -305,9 +305,9 @@ describe "API" ->
     bucket = ""
   
     beforeEach (done) ->
-      (new_bucket) <- newbucket false
-      <- setkey new_bucket, _, "someDamnedThing"
-      bucket := new_bucket
+      (newbucket) <- newbucket false
+      <- setkey newbucket, _, "someDamnedThing"
+      bucket := newbucket
       done!
   
     specify 'should delete the bucket' (done) ->
@@ -352,8 +352,8 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       done!
       
     utf_case_get = (tag, utf_string) ->

@@ -70,28 +70,28 @@ describe "Commands" ->
   
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      err, new_bucket <- commands.new_bucket "Info string", "192.231.221.256"
+      err, newbucket <- commands.newbucket "Info string", "192.231.221.256"
       expect err, "newbucket #err" .to.be.null
-      expect new_bucket .to.match /^[0-9a-zA-Z]{20}$/
-      <- mark_bucket new_bucket
+      expect newbucket .to.match /^[0-9a-zA-Z]{20}$/
+      <- mark_bucket newbucket
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb "Crypto error"
-      err, new_bucket <- commands.new_bucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
       expect err .to.equal 'Crypto error'
-      expect new_bucket .to.be.undefined
+      expect newbucket .to.be.undefined
       done!
   
     specify 'Bad bucket creation error' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb null, "INEXPLICABLYSAMERANDOMDATA"
-      err, new_bucket <- commands.new_bucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
       expect err .to.equal null
-      expect new_bucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
+      expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
       
-      err, new_bucket <- commands.new_bucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
       expect err, err .to.equal 'bucket already exists'
       done!
   
@@ -99,8 +99,8 @@ describe "Commands" ->
     bucket = ""
     
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       done!
   
     specify 'should set a key' (done) ->
@@ -165,8 +165,8 @@ describe "Commands" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       commands.setkey bucket, "warzoo", "nozoo", done
   
     specify 'should get a key' (done) ->
@@ -191,8 +191,8 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       done!
 
     beforeEach (done) ->
@@ -246,8 +246,8 @@ describe "Commands" ->
   
     before (done) ->
       @timeout 10000
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       <- commands.setkey bucket, "woohoo", "value here"
       <- commands.setkey bucket, "werp", "value here"
       <- commands.setkey bucket, "StaggeringlyLessEfficient", "value here"
@@ -267,8 +267,8 @@ describe "Commands" ->
     bucket = ""
   
     beforeEach (done) ->
-      (new_bucket) <- newbucket false
-      bucket := new_bucket
+      (newbucket) <- newbucket false
+      bucket := newbucket
       <- commands.setkey bucket, "junkbucketfufto", 'whatyo'
       done!
   
@@ -299,8 +299,8 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (new_bucket) <- newbucket true
-      bucket := new_bucket
+      (newbucket) <- newbucket true
+      bucket := newbucket
       done!
       
     #
