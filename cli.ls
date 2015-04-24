@@ -4,74 +4,83 @@ require! {
   net
 }
 
-/*
+shortcuts = 
+  '?': 'help'
+  new: 'newbucket'
+  nb: 'newbucket'
+  sk: 'setkey'
+  gk: 'getkey'
+  lk: 'listkeys'
+  dk: 'delkey'
+  db: 'delbucket'
 
-Commands to support:
-
-  '/newbucket/' newbucket
-  '/setkey/:bucket/:key/:value' setkey
-  '/getkey/:bucket/:key' getkey
-  '/delkey/:bucket/:key' delkey
-  '/listkeys/:bucket' listkeys
-  '/delbucket/:bucket' delbucket
-  noop
-*/
-
-show_help = (socket, cb) ->
-  socket.write """
-  newbucket\r
-  setkey bucket key value\r
-  getkey bucket key\r
-  delkey bucket key\r
-  listkeys bucket\r
-  delbucket bucket\r
-  noop\r
-  """  
+show_help = (w, cb) ->
+  w "Commands available:\r\n"
+  for command, junk of commands
+    if commands[command].doc
+      w command
+      w "   #that"
+      w ""
+  w """
+help\r
+   Show this help.\r
+quit\r
+   Quit your session.\r
+"""
   cb!
 
-for own key, val of commands
-  if commands[key].params
-    console.log "I am #{commands[key].doc}"
 
-pre_resolve = (func) ->
-  newobj = {}
-  for key, val of func.params
-    newobj[key] = switch key
-    case 'ip'
-      '127.0.0.1'      
-    case 'info'
-      'This is info'
-    default
-       ''
+facts = 
+  ip: '127.0.0.1'
+  info: 'Some info'
+
+pre_resolve = (params) ->
+  newparams = []
+  left = 0
+  for param in params
+    for key, val of param
+      if facts[key]
+        newparams.push facts[key]
+      else
+        newparams.push null
+        left++
+
+  return [left, newparams]
 
 do_parse = (line, rl, socket) ->
-  w = socket.write
+  w = (line) -> socket.write "#line\r\n", 'utf8' if line
   [first, ...rest] = line / ' '
+  first = shortcuts[first] ? first
   switch first
   # These are CLI-only commands.
   case 'quit'
     return socket.end!
   case 'help'
-    <- show_help socket
+    <- show_help w
     rl.prompt!
   # These are whatever commands the commands module thinks are
   # commands.
   default
     if commands[first]?params # There's a command!
-      params = pre_resolve that
-      argcount = Object.keys params .length
+      [argcount, params] = pre_resolve that
       if rest.length != argcount
         w "I'm expecting #argcount arguments to #first"
         rl.prompt!
       else
         cmd = commands[first]
-        console.log cmd
-        cmd.call '', rest, ->
-          w err
-          w result
+        pp = [p ? rest.shift! for p in params]
+        pp.push (err, result) ->
+          if err
+            w err
+          else
+            if cmd.returnformatter
+              w cmd.returnformatter result
+            else
+              w result            
           rl.prompt!
+        cmd.apply commands, pp
     else
-      socket.write "I do not know that one. Sorry.\n"
+      w "That command is unknown."
       rl.prompt!
 
 
