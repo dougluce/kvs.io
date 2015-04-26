@@ -2,6 +2,8 @@ require! {
   readline
   './commands'
   net
+  os
+  ipv6
 }
 
 shortcuts = 
@@ -14,73 +16,116 @@ shortcuts =
   dk: 'delkey'
   db: 'delbucket'
 
+facts = cli_commands = null
+
 #
-# Things that I know and can fill in for params that ask.
+# Record my own IP addresses.
 #
 
-facts = 
-  ip: '127.0.0.1'
-  info: 'Some info'
+my_ip = []
+for dev, addresses of os.networkInterfaces!
+  for alias in addresses
+    switch alias.family
+    case'IPv6'
+      address = new ipv6.v6.Address alias.address
+      if address.isLinkLocal!
+        continue
+      if address.isLoopback!
+        continue
+      my_ip.push address.address
+    case 'IPv4'
+      address = new ipv6.v4.Address alias.address
+      if address.parsedAddress[0] == '127'
+        continue
+      my_ip.push address.address
 
-module.exports = (server) ->
-  server.server.on 'connect' cli_handler
-  s = net.createServer (socket) -> cli_open socket
+my_ip = my_ip.join ', '
+
+accept_web_connection = (req, socket, head) ->
+  if req.url == 'cli'
+    facts :=
+      info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
+      ip: req.connection.remoteAddress
+    return cli_open socket
+  socket.end!
+
+accept_telnet_connection = (socket) ->
+  facts :=
+    info: "Via Telnet [#{os.hostname!} #my_ip]"
+    ip: socket.remoteAddress
+  cli_open socket
+
+#
+# Allow a different commands object to be passed in
+#
+
+module.exports = (server, new_cli_commands = commands) ->
+  # Clone it so we don't pollute the upstream object.
+  cli_commands := ^^new_cli_commands 
+  define_locals!
+  # For Web version
+  server.server.on 'connect' accept_web_connection
+  # For telnet version
+  s = net.createServer accept_telnet_connection
   s.maxConnections = 10;
   s.listen 7002
   console.log "Telnet server on 7002"
 
-module.exports.clic = cli_commands = ^^commands
-
 #
-# Quit this CLI session.
+# Extend the commands object with commands that support
+# the CLI.
 #
 
-cli_commands.quit = quit = (socket, cb) ->
-  return socket.end!
-
-cli_commands.quit.params =
-  * socket: "The socket to close."
-  ...
-
-cli_commands.quit.doc = """
-Quit your session.
-"""
-
-cli_commands.help = (w, command, cb) ->
-  if command
-    if cli_commands[command]?doc
-      pstrings = []
-      commstring = ""
-      for param in cli_commands[command].params
-        unless param.private
-          for key, val of param
-            continue if key in [\optional \private]
-            pstrings.push "  #key: #val"
-            key = "[#key]" if param.optional
-            commstring += " " + key
-      w ""
-      w "  #command#commstring"
-      w ""
-      w that
-      for x in pstrings
-        w x
-      w ""
+function define_locals
+  #
+  # Quit this CLI session.
+  #
+  cli_commands.quit = quit = (socket, cb) ->
+    return socket.end!
+  
+  cli_commands.quit.params =
+    * socket: "The socket to close."
+    ...
+  
+  cli_commands.quit.doc = """
+  Quit your session.
+  """
+  
+  cli_commands.help = (w, command, cb) ->
+    if command
+      if cli_commands[command]?doc
+        pstrings = []
+        commstring = ""
+        for param in cli_commands[command].params
+          unless param.private
+            for key, val of param
+              continue if key in [\optional \private]
+              pstrings.push "  #key: #val"
+              key = "[#key]" if param.optional
+              commstring += " " + key
+        w ""
+        w "  #command#commstring"
+        w ""
+        w that
+        for x in pstrings
+          w x
+        w ""
+      else
+        w "#command is not known."
     else
-      w "#command is not known."
-  else
-    w "Commands available:"
-    for command, junk of cli_commands
-      if cli_commands[command].doc
-        w "  #command -- #that"
-  cb!
-
-cli_commands.help.params =
-  * w: "Write socket", private: true
-  * command: "Command to get help on", optional: true
-
-cli_commands.help.doc = """
-Show help.
-"""
+      w "Commands available:"
+      for command, junk of cli_commands
+        if cli_commands[command].doc
+          w "  #command -- #that"
+    cb!
+  
+  cli_commands.help.params =
+    * w: "Write socket", private: true
+    * command: "Command to get help on", optional: true
+  
+  cli_commands.help.doc = """
+  Show help.
+  """
 
 #
 # Fill in the facts if I have them.
@@ -137,7 +182,6 @@ do_parse = (line, rl, socket) ->
     w "That command is unknown."
     rl.prompt!
   
-
 function cli_open socket
   rl = null
   # Main CLI command processor
@@ -162,5 +206,3 @@ function cli_open socket
     ..output.write '\r                 \r' # Clear options for non-Telnet
     ..prompt!
 
-function cli_handler req, socket, head
-  cli_open socket

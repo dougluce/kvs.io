@@ -7,36 +7,36 @@ require! {
   net
 }
 
-Connector = (host, port, connect_cb) ->
-  cb = buffer = ''
+class Connector
+  buffer = ''
   count = 0
+  cb = client = null
   
-  client = net.connect 7002, '127.0.0.1', ->
-    connect_cb!
+  (host, port, connect_cb) ->
+    client := net.connect 7002, '127.0.0.1', ->
+      connect_cb!
+    client.on 'data', (data) ->
+      buffer += data.toString!
+      lines = buffer.split /\r\n/
+      if lines.length >= count
+        buffer := ''
+        cb lines.splice 0, count
   
-  client.on 'data', (data) ->
-    buffer += data.toString!
-    lines = buffer.split /\r\n/
-    if lines.length >= count
-      buffer := ''
-      cb lines.splice 0, count
-  
-  return
-    wait: (new_count, new_cb) ->
-      cb := new_cb
-      count := new_count
-    send: (data, new_count, new_cb) ->
-      cb := new_cb
-      count := new_count
-      client.write data + "\r"
+  wait: (new_count, new_cb) ->
+    cb := new_cb
+    count := new_count
+
+  send: (data, new_count, new_cb) ->
+    cb := new_cb
+    count := new_count
+    client.write data + "\r"
 
 describe "CLI" ->
   server = null
 
   before (done) ->
-    cli.clic.prototype = {}
     server := restify.createServer!
-    cli server
+    cli server, {} # CLI-only commands.
     runServer = ->
       <- server.listen 8089
       console.log '[CLI] %s server listening at %s', server.name, server.url
@@ -67,7 +67,8 @@ describe "CLI" ->
         expect data[0] .to.equal '\r                 \r>'
         data <- d.send '', 1 # Enter gives prompt back.
         expect data[0] .to.equal '>'
-        data <- d.send 'help', 1
+        data <- d.send 'help', 4
+        console.log data
         expect data[0] .to.equal 'Commands available:'
         done!
 
