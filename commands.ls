@@ -46,10 +46,10 @@ export newbucket = (info, ip, cb) ->
   cb null, bucket_name
 
 newbucket.params =
-  * info: "Information goes here"
-  * ip: "IP goes here"
+  * info: "Information about the bucket creator.", private: true
+  * ip: "IP address of the creator.", private: true
 
-newbucket.returnformatter = (bucket) -> "Your new bucket is #bucket"
+newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
 
 newbucket.doc = """
 Create a new bucket.
@@ -60,7 +60,6 @@ newbucket.semantics = "GET POST etc..." # For api..
 
 export listkeys = (bucket, cb) ->
   # Does this bucket exist?
-  console.log "I got bucket #bucket and cb #cb"
   err, result <- fetchValue 'buckets' bucket
   return cb err if err
   return cb 'not found' if result.isNotFound
@@ -81,6 +80,10 @@ listkeys.doc = """
 List the keys in a bucket.
 """
 
+listkeys.returnformatter = (w, keys) -> 
+  w "Keys in bucket:"
+  for key in keys
+    w key
 
 export delbucket = (bucket, cb) ->
   # Does this bucket exist?
