@@ -137,3 +137,39 @@ export after_all = (done) ->
   , done
 
 
+stub_riak =
+  * "#BUCKETLIST": {}
+    'buckets': {"#BUCKETLIST": 'yup'}
+
+DEBUG = false
+export stub_riak_client =
+  fetchValue: (options, cb) ->
+    {bucket, key} = options
+    console.log "fetching #bucket/#key" if DEBUG
+    unless stub_riak[bucket]
+      return cb null, {isNotFound: true, values: []}
+    unless stub_riak[bucket][key]
+      return cb null, {isNotFound: true, values: []}
+    cb null, {values: [stub_riak[bucket][key]]}
+  storeValue: (options, cb) ->
+    {bucket, key, value} = options
+    console.log "Storing #bucket/#key <- #value" if DEBUG
+    unless stub_riak[bucket]
+      stub_riak[bucket] = {}
+    stub_riak[bucket][key] = value
+    cb null, {}
+  secondaryIndexQuery: (options, cb) ->
+    {bucket, indexName, indexKey, stream} = options
+    if stub_riak[bucket] and Object.keys(stub_riak[bucket]).length > 0
+      values = []
+      for key in Object.keys(stub_riak[bucket])
+        values.push {indexKey: null, objectKey: key}
+      return cb null, {values: values}
+    cb null, {values: []}
+  deleteValue: (options, cb) ->
+    {bucket, key} = options
+    console.log "Deleting #bucket/#key" if DEBUG
+    if stub_riak[bucket]
+      delete stub_riak[bucket][key]
+    cb null, true
+

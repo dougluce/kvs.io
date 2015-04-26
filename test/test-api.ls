@@ -3,7 +3,7 @@ require! {
   restify
   querystring
   sinon
-  './utils': {setkey, after_all, newbucket, clients, BUCKETLIST, mark_bucket}
+  './utils'
   './utf-cases'
   'basho-riak-client': Riak
   '../api'
@@ -13,42 +13,6 @@ require! {
 
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
-
-stub_riak =
-  * "#BUCKETLIST": {}
-    'buckets': {"#BUCKETLIST": 'yup'}
-
-DEBUG = false
-stub_riak_client =
-  fetchValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "fetching #bucket/#key" if DEBUG
-    unless stub_riak[bucket]
-      return cb null, {isNotFound: true, values: []}
-    unless stub_riak[bucket][key]
-      return cb null, {isNotFound: true, values: []}
-    cb null, {values: [stub_riak[bucket][key]]}
-  storeValue: (options, cb) ->
-    {bucket, key, value} = options
-    console.log "Storing #bucket/#key <- #value" if DEBUG
-    unless stub_riak[bucket]
-      stub_riak[bucket] = {}
-    stub_riak[bucket][key] = value
-    cb null, {}
-  secondaryIndexQuery: (options, cb) ->
-    {bucket, indexName, indexKey, stream} = options
-    if stub_riak[bucket] and Object.keys(stub_riak[bucket]).length > 0
-      values = []
-      for key in Object.keys(stub_riak[bucket])
-        values.push {indexKey: null, objectKey: key}
-      return cb null, {values: values}
-    cb null, {values: []}
-  deleteValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "Deleting #bucket/#key" if DEBUG
-    if stub_riak[bucket]
-      delete stub_riak[bucket][key]
-    cb null, true
 
 server = sandbox = client = json_client = null
 
@@ -60,7 +24,7 @@ describe "API" ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       sandbox.stub Riak, "Client", ->
-        stub_riak_client
+        utils.stub_riak_client
   
     server := restify.createServer!
     api.init server
@@ -68,7 +32,7 @@ describe "API" ->
     runServer = ->
       <- server.listen 8088
       console.log '%s server listening at %s', server.name, server.url
-      [client, json_client] := clients!
+      [client, json_client] := utils.clients!
       done!
     domain.create!
       ..on 'error' (err) ->
@@ -82,7 +46,7 @@ describe "API" ->
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- after_all
+    <- utils.after_all
     client.close!
     json_client.close!
     <- server.close
@@ -91,7 +55,7 @@ describe "API" ->
   
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
@@ -110,7 +74,7 @@ describe "API" ->
       expect data .to.equal "INEXPLICABLYSAMERANDOMDATA"
       expect err, err .to.be.null
       expect res.statusCode .to.equal 201
-      <- mark_bucket "INEXPLICABLYSAMERANDOMDATA"
+      <- utils.mark_bucket "INEXPLICABLYSAMERANDOMDATA"
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
@@ -120,7 +84,7 @@ describe "API" ->
     bucket = ""
     
     before (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       bucket := newbucket
       done!
   
@@ -141,7 +105,7 @@ describe "API" ->
       basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
   
       specify 'Add one to get the full length' (done) ->
-        <- setkey bucket, _, basekey + "EXTRASTUFF"
+        <- utils.setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}E"
         expect data .to.equal "zoowahhhh"
         expect err, err .to.be.null
@@ -149,9 +113,9 @@ describe "API" ->
         done!
   
       specify 'Add a bunch, only the last counts.' (done) ->
-        <- setkey bucket, _, basekey + "EXTRASTUFF", 'one'
-        <- setkey bucket, _, basekey + "ENTRANCE", 'two'
-        <- setkey bucket, _, basekey + "EPBBBBB", 'three'
+        <- utils.setkey bucket, _, basekey + "EXTRASTUFF", 'one'
+        <- utils.setkey bucket, _, basekey + "ENTRANCE", 'two'
+        <- utils.setkey bucket, _, basekey + "EPBBBBB", 'three'
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
         expect data .to.equal "three"
         expect err, err .to.be.null
@@ -169,7 +133,7 @@ describe "API" ->
       key = "setkey-valuetest"
   
       specify 'Add one to get the full length' (done) ->
-        <- setkey bucket, _, key, "#{basevalue}E"
+        <- utils.setkey bucket, _, key, "#{basevalue}E"
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         expect data.length .to.equal VALUELENGTH
         expect data .to.equal "#{basevalue}E"
@@ -178,7 +142,7 @@ describe "API" ->
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
-        <- setkey bucket, _, key, "#{basevalue}EECHEEWAMAA"
+        <- utils.setkey bucket, _, key, "#{basevalue}EECHEEWAMAA"
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         expect data.length .to.equal VALUELENGTH
         expect data.slice -10 .to.equal 'vvvvvvvvvE'
@@ -189,9 +153,9 @@ describe "API" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       bucket := newbucket
-      setkey bucket, done
+      utils.setkey bucket, done
   
     specify 'should get a key' (done) ->
       err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
@@ -216,9 +180,9 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       bucket := newbucket
-      setkey bucket, done
+      utils.setkey bucket, done
   
     specify 'should delete a key' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
@@ -247,7 +211,7 @@ describe "API" ->
       basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
   
       specify 'Add one to get the full length' (done) ->
-        <- setkey bucket, _, basekey + "EXTRASTUFF"
+        <- utils.setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}E"
         expect data, "full length" .to.be.empty
         expect err, err .to.be.null
@@ -255,7 +219,7 @@ describe "API" ->
         done!
     
       specify 'Add a bunch, but only the first is going to count.' (done) ->
-        <- setkey bucket, _, basekey + "EXTRASTUFF"
+        <- utils.setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
         expect data, "add a bunch" .to.be.empty
         expect err, err .to.be.null
@@ -263,7 +227,7 @@ describe "API" ->
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
-        <- setkey bucket, _, basekey + "EXTRASTUFF"
+        <- utils.setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}"
         expect data .to.equal err.message .to.equal 'Entry not found.'
         expect err.statusCode, "on truncated delete" .to.equal 404
@@ -275,16 +239,16 @@ describe "API" ->
     basekey = Array KEYLENGTH .join 'x' # For key length checking
   
     before (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       bucket := newbucket
-      <- setkey bucket, _, "woohoo"
-      <- setkey bucket, _, "werp"
-      <- setkey bucket, _, "StaggeringlyLessEfficient"
-      <- setkey bucket, _, "EatingItStraightOutOfTheBag"
-      <- setkey bucket, _, "#{basekey}WHOP"
-      <- setkey bucket, _, "#{basekey}WERP" # Should get lost...
-      <- setkey bucket, _, "#{basekey}"
-      setkey bucket, done
+      <- utils.setkey bucket, _, "woohoo"
+      <- utils.setkey bucket, _, "werp"
+      <- utils.setkey bucket, _, "StaggeringlyLessEfficient"
+      <- utils.setkey bucket, _, "EatingItStraightOutOfTheBag"
+      <- utils.setkey bucket, _, "#{basekey}WHOP"
+      <- utils.setkey bucket, _, "#{basekey}WERP" # Should get lost...
+      <- utils.setkey bucket, _, "#{basekey}"
+      utils.setkey bucket, done
   
     specify 'should list keys' (done) ->
       err, req, res, data <- client.get "/listkeys/#{bucket}"
@@ -305,8 +269,8 @@ describe "API" ->
     bucket = ""
   
     beforeEach (done) ->
-      (newbucket) <- newbucket false
-      <- setkey newbucket, _, "someDamnedThing"
+      newbucket <- utils.newbucket false
+      <- utils.setkey newbucket, _, "someDamnedThing"
       bucket := newbucket
       done!
   
@@ -328,7 +292,7 @@ describe "API" ->
       done!
   
     specify 'should fail if bucket has entries' (done) ->
-      <- setkey bucket, _, "Yup"
+      <- utils.setkey bucket, _, "Yup"
       err, req, res, data <- client.get "/delbucket/#{bucket}"
       expect data .to.equal err.message .to.equal 'Remove all keys from the bucket first.'
       expect err.statusCode .to.equal 403
@@ -352,7 +316,7 @@ describe "API" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- newbucket true
+      newbucket <- utils.newbucket true
       bucket := newbucket
       done!
       
@@ -360,7 +324,7 @@ describe "API" ->
       # per rfc3986.txt, all URL's are %-encoded.
       key = querystring.escape utf_string
       specify tag, (done) ->
-        <- setkey bucket, _, key, querystring.escape utf_string
+        <- utils.setkey bucket, _, key, querystring.escape utf_string
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         # But we expect proper UTF-8 back.
         expect data,"data no match" .to.equal utf_string

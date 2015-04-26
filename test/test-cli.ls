@@ -9,8 +9,6 @@ require! {
   net
 }
 
-utils.clients!
-
 class Connector
   buffer = ''
   count = 0
@@ -50,6 +48,7 @@ describe "CLI alone" ->
     runServer = ->
       <- server.listen 8089
       console.log '[CLI] %s server listening at %s', server.name, server.url
+      utils.clients!
       done!
     domain.create!
       ..on 'error' (err) ->
@@ -103,8 +102,8 @@ describe "CLI alone" ->
     done!
 
   specify 'Junk command gives me error' (done) ->
-    data <- d.send 'GOOBADEE', 1
-    expect data .to.eql ['That command is unknown.']
+    data <- d.send 'GOOBADEE', 2
+    expect data .to.eql ['That command is unknown.', '>']
     done!
 
 describe "CLI full commands" ->
@@ -117,6 +116,7 @@ describe "CLI full commands" ->
     runServer = ->
       <- server.listen 8089
       console.log '[CLI] %s server listening at %s', server.name, server.url
+      utils.clients!
       done!
     domain.create!
       ..on 'error' (err) ->
@@ -156,7 +156,7 @@ describe "CLI full commands" ->
     expect data[3] .to.not.equal '>'
     done!
     
-  specify.only 'newbucket should create a bucket -- and show me info' (done) ->
+  specify 'newbucket should create a bucket -- and show me info' (done) ->
     data <- d.send 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
     expect data[1] .to.equal '>'
