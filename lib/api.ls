@@ -101,9 +101,11 @@ export standalone = ->
         name: 'audit'
         stream: prettyStdOut
         type: 'raw'
-  cli server, process.env.CLI_PORT ? 7002
+  is_prod = process.env.NODE_ENV == 'production'
+  console.log is_prod
+  cli server, if is_prod then 23 else 7002
   init server
-  <- server.listen process.env.WEB_PORT ? 8080
+  <- server.listen if is_prod then 80 else 8080
   console.log '%s listening at %s', server.name, server.url
 
 if !module.parent # Run stand-alone
