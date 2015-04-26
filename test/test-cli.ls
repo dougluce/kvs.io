@@ -80,7 +80,7 @@ describe "CLI alone" ->
       x = new Buffer data[0] .toString 'base64'
       expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
       data <- d.wait 1 # After pause, get option erase string
-      expect data[0] .to.match /^\r                 \r>?$/
+      expect data[0] .to.match /^\r                 \r>$/
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!

@@ -50,6 +50,7 @@ accept_web_connection = (req, socket, head) ->
   socket.end!
 
 accept_telnet_connection = (socket) ->
+  socket.setNoDelay!
   facts :=
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
