@@ -1,13 +1,11 @@
-#!env kvs.io.lsc
-
 require! {
   'basho-riak-client': Riak
   restify
   bunyan
   'bunyan-prettystream': PrettyStream
   ipware
-  './lib/commands'
-  './lib/cli'
+  './commands'
+  './cli'
 }
 
 #
@@ -74,7 +72,7 @@ function contentTypeChecker req, res, next
     res.ct = 'application/json'
   next!
 
-exports.init = (server) ->
+export init = (server) ->
   commands.init!
   server.use contentTypeChecker
   server.use restify.bodyParser!
@@ -95,7 +93,7 @@ exports.init = (server) ->
 prettyStdOut = new PrettyStream!
 prettyStdOut.pipe process.stdout
 
-if !module.parent # Run stand-alone
+export standalone = ->
   server = restify.createServer do
     name: 'kvs.io'
   server.on 'after' restify.auditLogger do
@@ -104,7 +102,9 @@ if !module.parent # Run stand-alone
         stream: prettyStdOut
         type: 'raw'
   cli server, process.env.CLI_PORT ? 7002
-  exports.init server
+  init server
   <- server.listen process.env.WEB_PORT ? 8080
   console.log '%s listening at %s', server.name, server.url
 
+if !module.parent # Run stand-alone
+  standalone!

@@ -4,14 +4,14 @@
   "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
-    "preinstall": "lsc --compile api.ls",
-    "start": "lsc api.ls",
+    "start": "lsc kvs.io.ls",
     "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
     "start_mon": "nodemon -L -e ls --exec lsc api.ls",
     "test_mon": "nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
   },
   "bin": {
-    "kvs.io": "./api.js"
+    "kvs.io": "./kvs.io.ls",
+    "kvs.io.lsc": "./node_modules/LiveScript/bin/lsc"
   },
   "author": "Doug Luce",
   "license": "ISC",
