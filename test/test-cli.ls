@@ -79,6 +79,7 @@ describe "CLI alone" ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
       expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
+      <- setTimeout _, 300  # Because network sucks.
       data <- d.wait 1 # After pause, get option erase string
       expect data .to.eql ['\r                 \r>']
       data <- d.send '', 1 # Enter gives prompt back.
