@@ -6,7 +6,7 @@ require! {
   './utils'
   './utf-cases'
   'basho-riak-client': Riak
-  '../commands'
+  '../lib/commands'
   crypto
   domain
 }

@@ -2,8 +2,8 @@ require! {
   chai: {expect}
   restify
   'basho-riak-client': Riak
-  '../cli'
-  '../commands'
+  '../lib/cli'
+  '../lib/commands'
   './utils'
   sinon
   domain

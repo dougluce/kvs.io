@@ -1,11 +1,13 @@
+#!env kvs.io.lsc
+
 require! {
   'basho-riak-client': Riak
   restify
   bunyan
   'bunyan-prettystream': PrettyStream
   ipware
-  './commands'
-  './cli'
+  './lib/commands'
+  './lib/cli'
 }
 
 #
@@ -97,13 +99,12 @@ if !module.parent # Run stand-alone
   server = restify.createServer do
     name: 'kvs.io'
   server.on 'after' restify.auditLogger do
-    * log: bunyan.createLogger(
-      * name: 'audit'
+    * log: bunyan.createLogger do
+        name: 'audit'
         stream: prettyStdOut
         type: 'raw'
-      )
-  cli server
+  cli server, process.env.CLI_PORT ? 7002
   exports.init server
-  <- server.listen 8080
+  <- server.listen process.env.WEB_PORT ? 8080
   console.log '%s listening at %s', server.name, server.url
 

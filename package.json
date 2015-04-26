@@ -1,17 +1,21 @@
 {
   "name": "kvs.io",
   "version": "0.0.1",
-  "description": "kvs.io initial go",
+  "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
-    "start": "NODE_ENV=production lsc api.ls",
-    "test": "NODE_ENV=test mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
-    "startdev": "NODE_ENV=development nodemon -L -e ls --exec lsc api.ls",
-    "testmon": "NODE_ENV=development nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'",
-    "testmon2": "NODE_ENV=development nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-cli.ls'"
+    "start": "lsc api.ls",
+    "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
+    "start_mon": "nodemon -L -e ls --exec lsc api.ls",
+    "test_mon": "nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
+  },
+  "bin": {
+    "kvs.io": "./api.ls",
+    "kvs.io.lsc": "./node_modules/LiveScript/bin/lsc"
   },
   "author": "Doug Luce",
   "license": "ISC",
+  "homepage": "http://kvs.io",
   "dependencies": {
     "basho-riak-client": "^1.0.1",
     "bunyan": "^1.3.5",
@@ -29,5 +33,9 @@
     "mocha": "^2.2.1",
     "nodemon": "1.3.0-6",
     "sinon": "^1.14.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dougluce/kvs.io.git"
   }
 }

@@ -5,7 +5,7 @@ require! {
   os
   restify
   crypto
-  '../commands'
+  '../lib/commands'
 }
 
 #
