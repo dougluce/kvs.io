@@ -5,6 +5,7 @@ require! {
   os
   restify
   crypto
+  '../commands'
 }
 
 #
@@ -16,25 +17,6 @@ export BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
 
 now = new Date!
 riak_client = client = json_client = null
-
-MAXKEYLENGTH = 256
-MAXVALUELENGTH = 65536
-
-fetchValue = (bucket, key, next) ->
-  key .= substr 0, MAXKEYLENGTH
-  riak_client.fetchValue do
-    * bucket: bucket
-      key: key
-      convertToJs: false
-    next
-
-storeValue = (bucket, key, value, next) ->
-  key .= substr 0, MAXKEYLENGTH
-  riak_client.storeValue do
-    * bucket: bucket
-      key: key
-      value: value
-    next
 
 export clients = (port = 8088) ->
   client := restify.createStringClient do
@@ -50,63 +32,36 @@ export clients = (port = 8088) ->
 
   return [client, json_client]
 
-export setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
-  err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
-  expect err, "setkey #bucket -- #key/#value #err" .to.be.null
-  expect res.statusCode, "setkey status" .to.equal 201
-  expect data, "setkey data" .to.be.empty
-  done!
-
-setkey_json = (bucket, done, key = "wazoo", value="zoowahhhh") ->
-  err, req, res, data <- json_client.post "/setkey" do
-    * bucket: bucket
-      key: key
-      value: value
-  expect err, "setkey #bucket -- #key/#value #err" .to.be.null
-  expect res.statusCode, "setkey status" .to.equal 201
-  expect data, "setkey data" .to.be.empty
-  done!
-
 test_buckets = [] # Keep track of for later removal.
 
+# Accesses riak directly!
 export bucket_metadata = (bucket, done) ->
-  err, result <- fetchValue 'buckets' bucket
+  err, result <- commands.fetchValue 'buckets' bucket
   return done err if err
   done null, JSON.parse result.values.shift!value.toString 'utf8'
 
 export mark_bucket = (bucket, done) ->
   # Mark this bucket as being a test one.
-  <- storeValue bucket, "testbucketinfo", "Run on #{os.hostname!} at #now"
+  <- commands.storeValue bucket, "testbucketinfo", "Run on #{os.hostname!} at #now"
   # Track this bucket locally
   test_buckets.push bucket
   # and globally, for later cleanup.
-  <- storeValue BUCKETLIST, bucket, "Run on #{os.hostname!} at #now"
+  <- commands.storeValue BUCKETLIST, bucket, "Run on #{os.hostname!} at #now"
   done!
   
 # Mark means to mark it for later deletion.
 # Set false for tests that will delete the bucket.
-export newbucket = (mark, done) ->
-  ex, buf <- crypto.randomBytes 15
-  expect ex .to.be.null
-  # URL- and hostname-safe strings.
-  bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket_name
+export markedbucket = (mark, done) ->
+  err, bucket <- commands.newbucket "Run on #{os.hostname!} at #now", "127.0.0.1"
   expect err .to.be.null
-  expect result.isNotFound .to.be.true
-  # Mark this bucket as taken and record by whom.
-  value =
-    ip: "127.0.0.1"
-    date: new Date!toISOString!
-    info: "Run on #{os.hostname!} at #now"
-  <- storeValue "buckets", bucket_name, value
   if mark
-    <- mark_bucket bucket_name
-    done bucket_name
+    <- mark_bucket bucket
+    done bucket
   else
-    done bucket_name  
+    done bucket
 
 # Delete everything in a bucket
+# Accesses riak directly!
 export deleteall = (bucket, done) ->
   keys = []
   <- async.doWhilst (cb) ->

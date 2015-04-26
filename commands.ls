@@ -9,7 +9,7 @@ MAXVALUELENGTH = 65536
 
 riak_client = null # Here to allow stubbing by tests.
 
-fetchValue = (bucket, key, next) ->
+export fetchValue = (bucket, key, next) ->
   key .= substr 0, MAXKEYLENGTH
   riak_client.fetchValue do
     * bucket: bucket
@@ -17,7 +17,7 @@ fetchValue = (bucket, key, next) ->
       convertToJs: false
     next
 
-storeValue = (bucket, key, value, next) ->
+export storeValue = (bucket, key, value, next) ->
   key .= substr 0, MAXKEYLENGTH
   riak_client.storeValue do
     * bucket: bucket

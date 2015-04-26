@@ -3,7 +3,7 @@ require! {
   restify
   querystring
   sinon
-  './utils': {after_all, newbucket, clients, mark_bucket, BUCKETLIST, clients}
+  './utils'
   './utf-cases'
   'basho-riak-client': Riak
   '../commands'
@@ -14,42 +14,6 @@ require! {
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
-stub_riak =
-  * "#BUCKETLIST": {}
-    'buckets': {"#BUCKETLIST": 'yup'}
-
-DEBUG = false
-stub_riak_client =
-  fetchValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "fetching #bucket/#key" if DEBUG
-    unless stub_riak[bucket]
-      return cb null, {isNotFound: true, values: []}
-    unless stub_riak[bucket][key]
-      return cb null, {isNotFound: true, values: []}
-    cb null, {values: [stub_riak[bucket][key]]}
-  storeValue: (options, cb) ->
-    {bucket, key, value} = options
-    console.log "Storing #bucket/#key <- #value" if DEBUG
-    unless stub_riak[bucket]
-      stub_riak[bucket] = {}
-    stub_riak[bucket][key] = value
-    cb null, {}
-  secondaryIndexQuery: (options, cb) ->
-    {bucket, indexName, indexKey, stream} = options
-    if stub_riak[bucket] and Object.keys(stub_riak[bucket]).length > 0
-      values = []
-      for key in Object.keys(stub_riak[bucket])
-        values.push {indexKey: null, objectKey: key}
-      return cb null, {values: values}
-    cb null, {values: []}
-  deleteValue: (options, cb) ->
-    {bucket, key} = options
-    console.log "Deleting #bucket/#key" if DEBUG
-    if stub_riak[bucket]
-      delete stub_riak[bucket][key]
-    cb null, true
-
 sandbox = client = json_client = null
 
 describe "Commands" ->
@@ -57,14 +21,14 @@ describe "Commands" ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       sandbox.stub Riak, "Client", ->
-        stub_riak_client
+        utils.stub_riak_client
     commands.init!
-    clients!
+    utils.clients!
     done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- after_all
+    <- utils.after_all
     sandbox.restore!
     done!
   
@@ -73,7 +37,7 @@ describe "Commands" ->
       err, newbucket <- commands.newbucket "Info string", "192.231.221.256"
       expect err, "newbucket #err" .to.be.null
       expect newbucket .to.match /^[0-9a-zA-Z]{20}$/
-      <- mark_bucket newbucket
+      <- utils.mark_bucket newbucket
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
@@ -99,7 +63,7 @@ describe "Commands" ->
     bucket = ""
     
     before (done) ->
-      (newbucket) <- newbucket true
+      (newbucket) <- utils.markedbucket true
       bucket := newbucket
       done!
   
@@ -165,7 +129,7 @@ describe "Commands" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (newbucket) <- newbucket true
+      (newbucket) <- utils.markedbucket true
       bucket := newbucket
       commands.setkey bucket, "warzoo", "nozoo", done
   
@@ -191,7 +155,7 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- newbucket true
+      (newbucket) <- utils.markedbucket true
       bucket := newbucket
       done!
 
@@ -246,7 +210,7 @@ describe "Commands" ->
   
     before (done) ->
       @timeout 10000
-      (newbucket) <- newbucket true
+      (newbucket) <- utils.markedbucket true
       bucket := newbucket
       <- commands.setkey bucket, "woohoo", "value here"
       <- commands.setkey bucket, "werp", "value here"
@@ -267,7 +231,7 @@ describe "Commands" ->
     bucket = ""
   
     beforeEach (done) ->
-      (newbucket) <- newbucket false
+      (newbucket) <- utils.markedbucket false
       bucket := newbucket
       <- commands.setkey bucket, "junkbucketfufto", 'whatyo'
       done!
@@ -299,7 +263,7 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- newbucket true
+      (newbucket) <- utils.markedbucket true
       bucket := newbucket
       done!
       
