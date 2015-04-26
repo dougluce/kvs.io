@@ -26,7 +26,7 @@ my_ip = []
 for dev, addresses of os.networkInterfaces!
   for alias in addresses
     switch alias.family
-    case'IPv6'
+    case 'IPv6'
       address = new ipv6.v6.Address alias.address
       if address.isLinkLocal!
         continue
@@ -59,17 +59,18 @@ accept_telnet_connection = (socket) ->
 # Allow a different commands object to be passed in
 #
 
-module.exports = (server, new_cli_commands = commands) ->
+module.exports = (server, port = 7002, new_cli_commands = commands) ->
   # Clone it so we don't pollute the upstream object.
   cli_commands := ^^new_cli_commands 
   define_locals!
   # For Web version
   server.server.on 'connect' accept_web_connection
   # For telnet version
-  s = net.createServer accept_telnet_connection
-  s.maxConnections = 10;
-  s.listen 7002
-  console.log "Telnet server on 7002"
+  telnet_server = net.createServer accept_telnet_connection
+  telnet_server.maxConnections = 10;
+  telnet_server.listen port
+  console.log "Telnet server on #port"
+  return telnet_server
 
 #
 # Extend the commands object with commands that support
@@ -80,12 +81,13 @@ function define_locals
   #
   # Quit this CLI session.
   #
-  cli_commands.quit = quit = (socket, cb) ->
+  cli_commands.quit = quit = (w, socket, cb) ->
+    w "Disconnecting."
     return socket.end!
   
   cli_commands.quit.params =
+    * w: "Write socket", private: true
     * socket: "The socket to close."
-    ...
   
   cli_commands.quit.doc = """
   Quit your session.

@@ -69,6 +69,11 @@ setkey_json = (bucket, done, key = "wazoo", value="zoowahhhh") ->
 
 test_buckets = [] # Keep track of for later removal.
 
+export bucket_metadata = (bucket, done) ->
+  err, result <- fetchValue 'buckets' bucket
+  return done err if err
+  done null, JSON.parse result.values.shift!value.toString 'utf8'
+
 export mark_bucket = (bucket, done) ->
   # Mark this bucket as being a test one.
   <- storeValue bucket, "testbucketinfo", "Run on #{os.hostname!} at #now"
