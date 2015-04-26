@@ -4,7 +4,7 @@
   "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
-    "prepublish": "lsc --compile api.ls",
+    "preinstall": "lsc --compile api.ls",
     "start": "lsc api.ls",
     "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
     "start_mon": "nodemon -L -e ls --exec lsc api.ls",
