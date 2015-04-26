@@ -164,7 +164,7 @@ describe "CLI full commands" ->
     expect data[3], 'hsgmac' .to.not.equal '>'
     done!
     
-  specify.only 'newbucket should create a bucket -- and show me info' (done) ->
+  specify 'newbucket should create a bucket -- and show me info' (done) ->
     data <- d.send 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
     expect data[1] .to.equal '>'
