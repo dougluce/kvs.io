@@ -14,9 +14,9 @@ require! {
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
-server = sandbox = client = json_client = null
 
 describe "API" ->
+  server = sandbox = client = json_client = null
 
   before (done) ->
     @timeout 3000

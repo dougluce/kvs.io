@@ -1,10 +1,11 @@
 require! {
   chai: {expect}
   restify
-  './utf-cases'
+  'basho-riak-client': Riak
   '../cli'
   '../commands'
   './utils'
+  sinon
   domain
   net
 }
@@ -40,9 +41,14 @@ class Connector
     client.write data + "\r"
 
 describe "CLI alone" ->
-  d = server = telnet_server = null
+  d = sandbox = server = telnet_server = null
 
   before (done) ->
+    sandbox := sinon.sandbox.create!
+    if process.env.NODE_ENV != 'test'
+      sandbox.stub Riak, "Client", ->
+        utils.stub_riak_client
+
     server := restify.createServer!
     telnet_server := cli server, 7008,  {} # CLI-only commands.
     runServer = ->
@@ -62,15 +68,17 @@ describe "CLI alone" ->
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
+    <- utils.after_all
     <- server.close
     <- telnet_server.close
+    sandbox.restore!
     done!
 
   beforeEach (done) ->
     d := new Connector '127.0.0.1', 7008, ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
-      expect x .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
+      expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
       data <- d.wait 1 # After pause, get option erase string
       expect data .to.eql ['\r                 \r>']
       data <- d.send '', 1 # Enter gives prompt back.
@@ -85,7 +93,7 @@ describe "CLI alone" ->
 
   specify 'help should give me help' (done) ->
     data <- d.send 'help', 4
-    expect data .to.eql do
+    expect data, 'hsgmh' .to.eql do
       * 'Commands available:'
         '  quit -- Quit your session.'
         '  help -- Show help.'
@@ -94,7 +102,7 @@ describe "CLI alone" ->
     
   specify 'help help should give me help on help' (done) ->
     data <- d.send 'help help', 4
-    expect data .to.eql do
+    expect data, 'hhsgmhoh'  .to.eql do
       * ''
         '  help [command]'
         ''
@@ -153,7 +161,7 @@ describe "CLI full commands" ->
 
   specify 'help should give me another command' (done) ->
     data <- d.send 'help', 4
-    expect data[3] .to.not.equal '>'
+    expect data[3], 'hsgmac' .to.not.equal '>'
     done!
     
   specify 'newbucket should create a bucket -- and show me info' (done) ->
