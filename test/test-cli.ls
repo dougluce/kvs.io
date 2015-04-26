@@ -17,13 +17,18 @@ class Connector
   
   (host, port, connect_cb) ->
     client := net.connect port, '127.0.0.1', ->
+      buffer := ''
       connect_cb client
+    client.on 'end', (data) ->
+      lines = buffer.split /\r\n/
+      cb lines.splice 0, count
     client.on 'data', (data) ->
       buffer += data.toString!
       lines = buffer.split /\r\n/
-      if lines.length >= count
-        buffer := ''
-        cb lines.splice 0, count
+      if lines.length >= count and (lines[lines.length-1].length > 0)
+        ret = lines.splice 0, count
+        buffer := lines.join "\r\n"
+        cb ret
 
   end: ->
     client.end!
@@ -40,6 +45,11 @@ class Connector
     count := new_count
     client.write data + "\r"
 
+  rest: (ocb) ->
+    lines = buffer.split /\r\n/
+    buffer := ''
+    ocb lines
+  
 describe "CLI alone" ->
   d = sandbox = server = telnet_server = null
 
@@ -101,17 +111,22 @@ describe "CLI alone" ->
     done!
     
   specify 'help help should give me help on help' (done) ->
-    data <- d.send 'help help', 4
+    data <- d.send 'help help', 7
     expect data, 'hhsgmhoh'  .to.eql do
       * ''
         '  help [command]'
         ''
         'Show help.'
+        '  command: Command to get help on'
+        ''
+        '>'
     done!
 
   specify 'Junk command gives me error' (done) ->
     data <- d.send 'GOOBADEE', 2
-    expect data .to.eql ['That command is unknown.', '>']
+    expect data .to.eql do
+      * 'That command is unknown.'
+        '>'
     done!
 
 describe "CLI full commands" ->
@@ -162,6 +177,8 @@ describe "CLI full commands" ->
   specify 'help should give me another command' (done) ->
     data <- d.send 'help', 4
     expect data[3], 'hsgmac' .to.not.equal '>'
+    data <- d.rest
+    expect data[data.length-1], 'hsgmac2' .to.equal '>'
     done!
     
   specify 'newbucket should create a bucket -- and show me info' (done) ->
