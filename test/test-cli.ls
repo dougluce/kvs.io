@@ -164,13 +164,13 @@ describe "CLI full commands" ->
     expect data[3], 'hsgmac' .to.not.equal '>'
     done!
     
-  specify 'newbucket should create a bucket -- and show me info' (done) ->
+  specify.only 'newbucket should create a bucket -- and show me info' (done) ->
     data <- d.send 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
     expect data[1] .to.equal '>'
     bucket = data[0].slice(-20)
     err, result <- utils.bucket_metadata bucket
-    expect result.ip .to.equal '127.0.0.1'
+    expect result.ip .to.match /^(::ffff:)?127.0.0.1/
     expect result.info .to.match /^Via Telnet [\S+ [0-9\.]+$/
     expect result.date .to.match /^\d{4|-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ$/
     done!
