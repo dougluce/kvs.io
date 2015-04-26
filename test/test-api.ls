@@ -248,6 +248,7 @@ describe "API" ->
     basekey = Array KEYLENGTH .join 'x' # For key length checking
   
     before (done) ->
+      @timeout 5000 if process.env.NODE_ENV == 'test'
       newbucket <- utils.markedbucket true
       bucket := newbucket
       <- api_setkey bucket, _, "woohoo"
