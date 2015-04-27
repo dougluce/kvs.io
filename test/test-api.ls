@@ -388,3 +388,20 @@ describe "API" ->
       
     describe 'posts' ->
       driver utf_case_post
+
+  describe 'web site proxying' ->
+    specify 'getting index.html should proxy' (done) ->
+      err, req, res, data <- client.get "/index.html"
+      expect err, "err index.html" .to.be.null
+      expect res.statusCode, "index.html status" .to.equal 200
+      expect res.headers['content-type'], "index.html content" .to.equal 'text/html'
+      expect data, "index.html data" .to.not.be.empty
+      done!
+
+    specify 'getting /w should proxy' (done) ->
+      err, req, res, data <- client.get "/w"
+      expect err, "err /w" .to.be.null
+      expect res.statusCode, "/w status" .to.equal 200
+      expect res.headers['content-type'], "/w content" .to.equal 'text/html'
+      expect data, "/w data" .to.not.be.empty
+      done!

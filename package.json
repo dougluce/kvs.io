@@ -23,6 +23,7 @@
     "dtrace-provider": "^0.4.0",
     "ipv6": "^3.1.1",
     "ipware": "0.0.5",
+    "request": "^2.55.0",
     "restify": "^3.0.2"
   },
   "devDependencies": {

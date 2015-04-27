@@ -1,6 +1,7 @@
 require! {
   'basho-riak-client': Riak
   restify
+  request
   bunyan
   'bunyan-prettystream': PrettyStream
   ipware
@@ -79,7 +80,8 @@ export init = (server) ->
   commands.init!
   server.use contentTypeChecker
   server.use restify.bodyParser!
-
+  server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
+    request.get 'http://w.kvs.io/' + req.params[0] .pipe res
   server.get '/newbucket/' newbucket
   server.get '/setkey/:bucket/:key/:value' setkey
   server.post '/setkey' setkey
