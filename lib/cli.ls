@@ -84,6 +84,8 @@ module.exports = (server, port = 7002, new_cli_commands = commands) ->
   log.info "Telnet server on #port"
   return telnet_server
 
+module.exports.banner = banner = "Welcome to kvs.io.  Type 'help' for help."
+
 #
 # Extend the commands object with commands that support
 # the CLI.
@@ -219,5 +221,6 @@ function cli_open socket
     ..setPrompt '>'
     ..on 'line' cli
     ..output.write '\r                 \r' # Clear options for non-Telnet
+    ..output.write banner + "\r\n"
     ..prompt!
 

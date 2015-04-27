@@ -91,8 +91,8 @@ describe "CLI alone" ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
       expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
-      data <- d.wait 1 # After pause, get option erase string
-      expect data[0] .to.match /^\r                 \r>$/
+      data <- d.wait 2 # After pause, get option erase string
+      expect data .to.eql ['\r                 \r' + cli.banner, '>']
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!
@@ -168,8 +168,8 @@ describe "CLI full commands" ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
       expect x .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
-      data <- d.wait 1 # After pause, get option erase string
-      expect data .to.eql ['\r                 \r>']
+      data <- d.wait 2 # After pause, get option erase string
+      expect data .to.eql ['\r                 \r' + cli.banner, '>']
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!
