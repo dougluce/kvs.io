@@ -19,6 +19,10 @@ export fetchValue = (bucket, key, next) ->
 
 export storeValue = (bucket, key, value, next) ->
   key .= substr 0, MAXKEYLENGTH
+  if typeof value == 'string'
+    value .= substr 0, MAXVALUELENGTH
+  if typeof value == 'object' and value.value
+    value.value .= substr 0, MAXVALUELENGTH
   riak_client.storeValue do
     * bucket: bucket
       key: key
@@ -110,7 +114,6 @@ Delete a bucket.
 """
 
 export setkey = (bucket, key, value, cb) ->
-  value .= substr 0, MAXVALUELENGTH
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket
   return cb err if err
