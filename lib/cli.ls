@@ -4,7 +4,10 @@ require! {
   net
   os
   ipv6
+  bunyan
 }
+
+log = null
 
 shortcuts = 
   '?': 'help'
@@ -46,14 +49,21 @@ accept_web_connection = (req, socket, head) ->
     facts :=
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
+      fd: socket._handle.fd
+    log.info facts
     return cli_open socket
   socket.end!
 
 accept_telnet_connection = (socket) ->
   socket.setNoDelay!
+  fd = socket._handle.fd
+  socket.on 'end' ->
+    log.info {fd: fd}, "lost connection"
   facts :=
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
+    fd: fd
+  log.info facts
   cli_open socket
 
 #
@@ -61,6 +71,7 @@ accept_telnet_connection = (socket) ->
 #
 
 module.exports = (server, port = 7002, new_cli_commands = commands) ->
+  log := bunyan.getLogger 'cli'
   # Clone it so we don't pollute the upstream object.
   cli_commands := ^^new_cli_commands 
   define_locals!
@@ -70,7 +81,7 @@ module.exports = (server, port = 7002, new_cli_commands = commands) ->
   telnet_server = net.createServer accept_telnet_connection
   telnet_server.maxConnections = 10;
   telnet_server.listen port
-  console.log "Telnet server on #port"
+  log.info "Telnet server on #port"
   return telnet_server
 
 #
@@ -150,6 +161,7 @@ pre_resolve = (params) ->
 #
 
 do_parse = (line, rl, socket) ->
+  log.info {fd: socket._handle.fd}, line
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
   facts["w"] = w
   facts["socket"] = socket

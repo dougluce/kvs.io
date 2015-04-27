@@ -7,6 +7,7 @@ require! {
   './utils'
   sinon
   domain
+  bunyan
   net
 }
 
@@ -58,7 +59,8 @@ describe "CLI alone" ->
     if process.env.NODE_ENV != 'test'
       sandbox.stub Riak, "Client", ->
         utils.stub_riak_client
-
+    sandbox.stub bunyan, 'getLogger', ->
+      info: sandbox.stub!
     server := restify.createServer!
     telnet_server := cli server, 7008,  {} # CLI-only commands.
     runServer = ->
@@ -130,9 +132,12 @@ describe "CLI alone" ->
     done!
 
 describe "CLI full commands" ->
-  d = server = telnet_server = null
+  d = sandbox = server = telnet_server = null
 
   before (done) ->
+    sandbox := sinon.sandbox.create!
+    sandbox.stub bunyan, 'getLogger', ->
+      info: sandbox.stub!
     server := restify.createServer!
     commands.init!
     telnet_server := cli server, 7009 # CLI-only commands.
@@ -155,6 +160,7 @@ describe "CLI full commands" ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     <- server.close
     <- telnet_server.close
+    sandbox.restore!
     done!
 
   beforeEach (done) ->

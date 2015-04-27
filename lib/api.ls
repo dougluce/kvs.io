@@ -8,6 +8,8 @@ require! {
   './cli'
 }
 
+log = null
+
 #
 # Restify route handlers
 #
@@ -73,6 +75,7 @@ function contentTypeChecker req, res, next
   next!
 
 export init = (server) ->
+  log = bunyan.getLogger 'api'
   commands.init!
   server.use contentTypeChecker
   server.use restify.bodyParser!
@@ -91,18 +94,31 @@ export init = (server) ->
   throw err
 
 prettyStdOut = new PrettyStream!
-prettyStdOut.pipe process.stdout
+prettyStdOut.pipe process.stderr
+
+bunyan.defaultStreams = 
+  * level: 'info',
+    type: 'raw'
+    stream: prettyStdOut
+  * level: 'info',
+    path: "#{process.env.HOME}/logs/kvsio-access.log"
+  * level: 'error',
+    path: "#{process.env.HOME}/logs/kvsio-error.log"
+
+bunyan.getLogger = (name) ->
+  if bunyan.defaultStreams
+    bunyan.createLogger name: name, streams: bunyan.defaultStreams
+  else
+    bunyan.createLogger name: name
 
 export standalone = ->
+  logger = bunyan.getLogger 'api'
   server = restify.createServer do
     name: 'kvs.io'
+    log: logger
   server.on 'after' restify.auditLogger do
-    * log: bunyan.createLogger do
-        name: 'audit'
-        stream: prettyStdOut
-        type: 'raw'
+    * log: bunyan.getLogger 'api'
   is_prod = process.env.NODE_ENV == 'production'
-  console.log is_prod
   cli server, if is_prod then 23 else 7002
   init server
   <- server.listen if is_prod then 80 else 8080

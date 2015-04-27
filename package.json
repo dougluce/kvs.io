@@ -4,10 +4,9 @@
   "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
-    "start": "lsc kvs.io.ls",
+    "start": "nodemon -L -e ls --exec lsc kvs.io.ls",
     "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
-    "start_mon": "nodemon -L -e ls --exec lsc api.ls",
-    "test_mon": "nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
+    "testmon": "nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
   },
   "bin": {
     "kvs.io": "./kvs.io.ls",
