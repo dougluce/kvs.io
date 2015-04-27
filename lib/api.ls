@@ -96,14 +96,19 @@ export init = (server) ->
 prettyStdOut = new PrettyStream!
 prettyStdOut.pipe process.stderr
 
+logpath = "/tmp"
+
+if process.env.NODE_ENV == 'production'
+  logpath = "#{process.env.HOME}/logs"
+
 bunyan.defaultStreams = 
   * level: 'info',
     type: 'raw'
     stream: prettyStdOut
   * level: 'info',
-    path: "#{process.env.HOME}/logs/kvsio-access.log"
+    path: "#logpath/kvsio-access.log"
   * level: 'error',
-    path: "#{process.env.HOME}/logs/kvsio-error.log"
+    path: "#logpath/kvsio-error.log"
 
 bunyan.getLogger = (name) ->
   if bunyan.defaultStreams
