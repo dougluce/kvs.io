@@ -33,53 +33,13 @@ handle_error = (err, next, good) ->
 #
 pre_resolve = (params, facts) ->
   newparams = []
-  optionals = 0
   for param in params
     for key, val of param
       if facts[key]
         newparams.push facts[key]
       else
         newparams.push null unless key in [\optional \private]
-        optionals++ if param['optional']
-  return [optionals, newparams]
-
-function newbucket req, res, next
-  (err, bucket_name) <- commands.newbucket req.headers, ipware!get_ip req
-  <- handle_error err, next
-  res.send 201, bucket_name
-
-function delbucket req, res, next
-  {bucket} = req.params
-  err <- commands.delbucket bucket
-  <- handle_error err, next
-  res.send 204
-
-function setkey req, res, next
-  {bucket, key, value} = req.params
-  err <- commands.setkey bucket, key, value
-  <- handle_error err, next
-  res.send 201
-
-function getkey req, res, next
-  {bucket, key} = req.params
-  err, value <- commands.getkey bucket, key
-  <- handle_error err, next
-  res.send value
-
-function delkey req, res, next
-  {bucket, key} = req.params
-  err <- commands.delkey bucket, key
-  <- handle_error err, next
-  res.send 204
-
-function listkeys req, res, next
-  {bucket} = req.params
-  err, values <- commands.listkeys bucket
-  <- handle_error err, next
-  res.send if res.ct == 'text/plain'
-    JSON.stringify(values)
-  else
-    values
+  return newparams
 
 rh = 0
 function contentTypeChecker req, res, next
@@ -91,14 +51,7 @@ function contentTypeChecker req, res, next
     res.ct = 'application/json'
   next!
 
-export init = (server) ->
-  log = bunyan.getLogger 'api'
-  commands.init!
-  server.use contentTypeChecker
-  server.use restify.bodyParser!
-  server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
-    request.get 'http://w.kvs.io/' + req.params[0] .pipe res
-
+makeroutes = (server) ->
   for commandname, command of commands
     httpparams = []
     if command.params
@@ -107,27 +60,25 @@ export init = (server) ->
         for paramname, doc of param
           httpparams.push paramname
       let ht = httpparams, cm = command
-        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" (req, res, next) ->
+        done = (req, res, next) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
-#          for p in ht
-#            facts[p] = req.params[p]
-          [optcount, params] = pre_resolve cm.params, facts
+          params = pre_resolve cm.params, facts
           params.push (err, result) ->
             <- handle_error err, next
             res.send cm.success, result
           cm.apply commands, params
+        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" done
+        server.post "/#commandname" done
 
-#  server.get '/newbucket/' newbucket
-#  server.get '/setkey/:bucket/:key/:value' setkey
-  server.post '/setkey' setkey
-#  server.get '/getkey/:bucket/:key' getkey
-  server.post '/getkey' getkey
-#  server.get '/delkey/:bucket/:key' delkey
-  server.post '/delkey' delkey
-#  server.get '/listkeys/:bucket' listkeys
-#  server.get '/delbucket/:bucket' delbucket
+export init = (server) ->
+  server.use contentTypeChecker
+  server.use restify.bodyParser!
+  server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
+    request.get 'http://w.kvs.io/' + req.params[0] .pipe res
+  commands.init!
+  makeroutes server
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
