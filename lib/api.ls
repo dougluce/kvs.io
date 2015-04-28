@@ -12,34 +12,17 @@ require! {
 
 log = null
 
-#
-# Restify route handlers
-#
+errors = 
+  'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
+  'not found': [restify.NotFoundError, "Entry not found."]
+  'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
+  'no such bucket': [restify.NotFoundError, "No such bucket."]
 
 handle_error = (err, next, good) ->
-  errors = 
-    'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
-    'not found': [restify.NotFoundError, "Entry not found."]
-    'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
-    'no such bucket': [restify.NotFoundError, "No such bucket."]
-  if errors[err]
-    return next new that.0 that.1
+  return next new that.0 that.1 if errors[err]
   return next new restify.InternalServerError err if err # May leak errors externally
   good! # If there's no error, continue on!
   next!
-
-#
-# Fill in the facts if I have them.
-#
-pre_resolve = (params, facts) ->
-  newparams = []
-  for param in params
-    for key, val of param
-      if facts[key]
-        newparams.push facts[key]
-      else
-        newparams.push null unless key in [\optional \private]
-  return newparams
 
 rh = 0
 function contentTypeChecker req, res, next
@@ -51,16 +34,26 @@ function contentTypeChecker req, res, next
     res.ct = 'application/json'
   next!
 
+#
+# Fill in the facts if I have them.
+#
+pre_resolve = (params, facts) ->
+  newparams = []
+  for param in params
+    for key, val of param
+      if facts[key]
+        newparams.push facts[key]
+  return newparams
+
 makeroutes = (server) ->
   for commandname, command of commands
-    httpparams = []
     if command.params
+      httpparams = []
       for param in command.params
         continue if param['private']
-        for paramname, doc of param
-          httpparams.push paramname
+        httpparams ++= Object.keys param
       let ht = httpparams, cm = command
-        done = (req, res, next) ->
+        handler = (req, res, next) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
@@ -69,8 +62,8 @@ makeroutes = (server) ->
             <- handle_error err, next
             res.send cm.success, result
           cm.apply commands, params
-        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" done
-        server.post "/#commandname" done
+        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler
+        server.post "/#commandname" handler
 
 export init = (server) ->
   server.use contentTypeChecker
