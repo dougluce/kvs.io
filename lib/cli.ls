@@ -67,22 +67,37 @@ accept_telnet_connection = (socket) ->
   cli_open socket
 
 #
-# Allow a different commands object to be passed in
+# Initialize our commands.  This allows tests to send in different
+# command objects.
 #
 
-module.exports = (server, port = 7002, new_cli_commands = commands) ->
-  log := bunyan.getLogger 'cli'
+export init = (new_cli_commands = commands) ->
   # Clone it so we don't pollute the upstream object.
   cli_commands := ^^new_cli_commands 
   define_locals!
-  # For Web version
-  server.server.on 'connect' accept_web_connection
+
+#
+# Start the standalone telnet server.
+#
+
+export start_telnetd = (port = 7002) ->
+  log := bunyan.getLogger 'cli_telnetd'
   # For telnet version
   telnet_server = net.createServer accept_telnet_connection
   telnet_server.maxConnections = 10;
   telnet_server.listen port
   log.info "Telnet server on #port"
   return telnet_server
+
+#
+# Given a Restify http server, listen to the connect event
+# so we can get sessions from that.
+#
+
+export start_upgrader = (server, tag = "") ->
+  log := bunyan.getLogger 'cli_upgrader#tag'
+  # For Web version
+  server.server.on 'connect' accept_web_connection
 
 module.exports.banner = banner = "Welcome to kvs.io.  Type 'help' for help."
 

@@ -110,20 +110,35 @@ bunyan.getLogger = (name) ->
 
 export standalone = ->
   logger = bunyan.getLogger 'api'
+  cli.init! # Fire up the CLI system.
+  cli.start_telnetd if is_prod then 23 else 7002
+
   options =
     name: 'kvs.io'
     log: logger
-  try
-    options['key'] = fs.readFileSync '/etc/ssl/kvs.io.key'
-    options['certificate'] = fs.readFileSync '/etc/ssl/kvs.io.crt'
+
   server = restify.createServer options
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
   is_prod = process.env.NODE_ENV == 'production'
-  cli server, if is_prod then 23 else 7002
   init server
   <- server.listen if is_prod then 80 else 8080
+  cli.start_upgrader server # Allow upgrades to CLI
   console.log '%s listening at %s', server.name, server.url
+
+  # HTTPS server
+  do
+    options['key'] = fs.readFileSync '/etc/ssl/kvs.io.key'
+    options['certificate'] = fs.readFileSync '/etc/ssl/kvs.io.crt'
+    secure_server = restify.createServer options
+    secure_server.on 'after' restify.auditLogger do
+      * log: bunyan.getLogger 'api'
+    is_prod = process.env.NODE_ENV == 'production'
+    init secure_server
+    <- secure_server.listen if is_prod then 443 else 8081
+    cli.start_upgrader secure_server, "secure" # Allow upgrades to CLI
+    console.log '%s listening at %s', secure_server.name, secure_server.url
+
 
 if !module.parent # Run stand-alone
   standalone!

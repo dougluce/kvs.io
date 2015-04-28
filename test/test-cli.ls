@@ -76,7 +76,8 @@ describe "CLI alone" ->
         else
           throw err
       ..run runServer
-    telnet_server := cli server, 7008,  {} # CLI-only commands.
+    cli.init {} # use CLI-only commands.
+    telnet_server := cli.start_telnetd 7008
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
@@ -140,7 +141,8 @@ describe "CLI full commands" ->
       info: sandbox.stub!
     server := restify.createServer!
     commands.init!
-    telnet_server := cli server, 7009 # CLI-only commands.
+    cli.init! # Full set of commands.
+    telnet_server := cli.start_telnetd 7009
     runServer = ->
       <- server.listen 8089
       console.log '[CLI] %s server listening at %s', server.name, server.url
