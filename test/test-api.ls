@@ -122,9 +122,14 @@ describe "API" ->
         done!
   
       specify 'Add a bunch, only the last counts.' (done) ->
+        timeout = 0
+        timeout = 100 if process.env.NODE_ENV == 'test'
         <- api_setkey bucket, _, basekey + "EXTRASTUFF", 'one'
+        <- setTimeout _, timeout
         <- api_setkey bucket, _, basekey + "ENTRANCE", 'two'
+        <- setTimeout _, timeout
         <- api_setkey bucket, _, basekey + "EPBBBBB", 'three'
+        <- setTimeout _, timeout
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
         expect data .to.equal "three"
         expect err, err .to.be.null
