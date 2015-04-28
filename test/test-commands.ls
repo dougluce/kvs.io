@@ -74,7 +74,7 @@ describe "Commands" ->
 
     specify 'should fail on bad bucket' (done) ->
       err <- commands.setkey "SOMEKINDABADBUCKET", "whatta", "maroon"
-      expect err .to.equal 'no such bucket'
+      expect err .to.equal 'not found'
       done!
   
     describe "only the first #{KEYLENGTH} key chars count. " (done) ->

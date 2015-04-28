@@ -105,7 +105,7 @@ describe "API" ->
       
     specify 'should fail on bad bucket' (done) ->
       err, req, res, data <- client.get "/setkey/SUPERBADBUCKETHERE/wazoo/zoowahhhh"
-      expect data .to.equal err.message .to.equal 'No such bucket.'
+      expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
       done!
   

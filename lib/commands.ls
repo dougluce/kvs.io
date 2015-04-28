@@ -29,6 +29,17 @@ export storeValue = (bucket, key, value, next) ->
       value: value
     next
 
+confirm_exists = (bucket, cb, rest) ->
+  err, result <- fetchValue 'buckets' bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  rest!
+
+confirm_found = (err, result, cb, rest) ->
+  return cb err if err
+  return cb 'not found' if not result or result.isNotFound
+  rest!
+
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
@@ -39,7 +50,7 @@ export newbucket = (info, ip, cb) ->
   bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket_name
-  return cb err, bucket_name if err
+  return cb err if err
   return cb 'bucket already exists', bucket_name if not result.isNotFound
   # Mark this bucket as taken and record by whom.
   value =
@@ -54,16 +65,12 @@ newbucket.params =
   * ip: "IP address of the creator.", private: true
 newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
-
 newbucket.doc = """
 Create a new bucket.
 """
 
 export listkeys = (bucket, cb) ->
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_exists bucket, cb
   err, result <- riak_client.secondaryIndexQuery do
     * bucket: bucket
       indexName: '$bucket'
@@ -87,10 +94,7 @@ listkeys.returnformatter = (w, keys) ->
     w key
 
 export delbucket = (bucket, cb) ->
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_exists bucket, cb
   # Is there anything in the bucket?
   err, values <- listkeys bucket
   return cb 'not empty' if values.length > 0
@@ -98,8 +102,7 @@ export delbucket = (bucket, cb) ->
   err, result <- riak_client.deleteValue do
     * bucket: 'buckets'
       key: bucket
-  return cb err if err
-  return cb 'not found' if not result
+  <- confirm_found err, result, cb
   cb null
 
 delbucket.params =
@@ -111,14 +114,12 @@ Delete a bucket.
 """
 
 export setkey = (bucket, key, value, cb) ->
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return cb err if err
-  return cb 'no such bucket' if result.isNotFound
+  <- confirm_exists bucket, cb
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
   cb null
+
 setkey.params =
   * bucket: "The bucket name."
   * key: "The key."
@@ -129,15 +130,12 @@ Set the value of a key in a bucket.
 """
 
 export getkey = (bucket, key, cb) ->
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_exists bucket, cb
   # Yup, look for the key.
   err, result <- fetchValue bucket, key
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_found err, result, cb
   cb null, result.values.shift!value.toString 'utf8'
+
 getkey.params =
   * bucket: "The bucket name."
   * key: "The key."
@@ -147,20 +145,16 @@ Get the value of a key in a bucket.
 """
 
 export delkey = (bucket, key, cb) ->
-  # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_exists bucket, cb
   # Does the entry exist?
   err, result <- fetchValue bucket, key
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  <- confirm_found err, result, cb
   err, result <- riak_client.deleteValue do
     * bucket: bucket
       key: key
-  return next err if err
-  return 'not found' if result.isNotFound
+  <- confirm_found err, result, cb
   cb null
+
 delkey.params =
   * bucket: "The bucket with this key."
   * key: "The key to delete."
