@@ -8,6 +8,7 @@ require! {
   './commands'
   './cli'
   'prelude-ls': {map}
+  fs
 }
 
 log = null
@@ -109,9 +110,13 @@ bunyan.getLogger = (name) ->
 
 export standalone = ->
   logger = bunyan.getLogger 'api'
-  server = restify.createServer do
+  options =
     name: 'kvs.io'
     log: logger
+  try
+    options['key'] = fs.readFileSync '/etc/ssl/kvs.io.key'
+    options['certificate'] = fs.readFileSync '/etc/ssl/kvs.io.crt'
+  server = restify.createServer options
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
   is_prod = process.env.NODE_ENV == 'production'
