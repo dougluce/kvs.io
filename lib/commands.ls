@@ -59,9 +59,6 @@ newbucket.doc = """
 Create a new bucket.
 """
 
-newbucket.semantics = "GET POST etc..." # For api..
-
-
 export listkeys = (bucket, cb) ->
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket

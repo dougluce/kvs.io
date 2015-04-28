@@ -89,9 +89,14 @@ describe "Commands" ->
         done!
   
       specify 'Add a bunch, but only the first is going to count.' (done) ->
+        timeout = 0
+        timeout = 100 if process.env.NODE_ENV == 'test'
         err <- commands.setkey bucket, basekey + "EJOINDER", 'verlue'
+        <- setTimeout _, timeout
         err <- commands.setkey bucket, basekey + "EYUPNO", 'varloe'
+        <- setTimeout _, timeout
         err <- commands.setkey bucket, basekey + "EYUPYUP", 'verlux'
+        <- setTimeout _, timeout
         expect err,err .to.be.null
 
         err, value <- commands.getkey bucket, basekey + "EYUPMAN"
