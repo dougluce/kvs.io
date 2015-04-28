@@ -56,13 +56,12 @@ describe "CLI alone" ->
 
   before (done) ->
     sandbox := sinon.sandbox.create!
+    sandbox.stub bunyan, 'getLogger', ->
+      info: sandbox.stub!
     if process.env.NODE_ENV != 'test'
       sandbox.stub Riak, "Client", ->
         utils.stub_riak_client
-    sandbox.stub bunyan, 'getLogger', ->
-      info: sandbox.stub!
     server := restify.createServer!
-    telnet_server := cli server, 7008,  {} # CLI-only commands.
     runServer = ->
       <- server.listen 8089
       console.log '[CLI] %s server listening at %s', server.name, server.url
@@ -77,6 +76,7 @@ describe "CLI alone" ->
         else
           throw err
       ..run runServer
+    telnet_server := cli server, 7008,  {} # CLI-only commands.
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'

@@ -69,7 +69,16 @@ export init = (server) ->
   server.use contentTypeChecker
   server.use restify.bodyParser!
   server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
-    request.get 'http://w.kvs.io/' + req.params[0] .pipe res
+    res.setHeader 
+    options = 
+      url: 'http://w.kvs.io' + req.params[0]
+      headers: 
+        'X-Forwarded-For': ipware!get_ip(req).clientIp
+    if req.headers['user-agent']
+      options.headers['user-agent'] = req.headers['user-agent']
+    if req.headers['referer']
+      options.headers['referer'] = req.headers['referer']
+    request options .pipe res
   commands.init!
   makeroutes server
   req, res, route, err <- server.on 'uncaughtException' 

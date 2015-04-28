@@ -14,13 +14,16 @@ require! {
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
+check_err = (err, res, where, status) ->
+  expect err, "err #where" .to.be.null
+  expect res.statusCode, "status #where" .to.equal status
+
 describe "API" ->
   server = sandbox = client = json_client = null
 
   api_setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
     err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
-    expect err, "setkey #bucket -- #key/#value #err" .to.be.null
-    expect res.statusCode, "setkey status" .to.equal 201
+    check_err err, res, "setkey #bucket -- #key/#value #err", 201
     expect data, "setkey data" .to.be.empty
     done!
 
@@ -33,8 +36,6 @@ describe "API" ->
         utils.stub_riak_client
   
     server := restify.createServer!
-    api.init server
-  
     runServer = ->
       <- server.listen 8088
       console.log '%s server listening at %s', server.name, server.url
@@ -49,7 +50,8 @@ describe "API" ->
         else
           throw err
       ..run runServer
-  
+    api.init server
+
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     <- utils.after_all
@@ -62,8 +64,7 @@ describe "API" ->
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
       err, req, res, data <- client.get '/newbucket'
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 201
+      check_err err, res, 'scab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/
       done!
   
@@ -81,8 +82,7 @@ describe "API" ->
         cb null, "INEXPLICABLYSAMERANDOMDATA"
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal "INEXPLICABLYSAMERANDOMDATA"
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 201
+      check_err err, res, 'bbce', 201
       <- utils.mark_bucket "INEXPLICABLYSAMERANDOMDATA"
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
@@ -99,8 +99,7 @@ describe "API" ->
   
     specify 'should set a key' (done) ->
       err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahharf"
-      expect err, "api.setkey #bucket #err" .to.be.null
-      expect res.statusCode, "setkey status" .to.equal 201
+      check_err err, res, "api.setkey #bucket #err", 201 
       expect data, "setkey data" .to.be.empty
       done!
       
@@ -117,8 +116,7 @@ describe "API" ->
         <- api_setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}E"
         expect data .to.equal "zoowahhhh"
-        expect err, err .to.be.null
-        expect res.statusCode .to.equal 200
+        check_err err, res, 'bbce', 200
         done!
   
       specify 'Add a bunch, only the last counts.' (done) ->
@@ -132,8 +130,7 @@ describe "API" ->
         <- setTimeout _, timeout
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
         expect data .to.equal "three"
-        expect err, err .to.be.null
-        expect res.statusCode .to.equal 200
+        check_err err, res, 'aabotlc', 200
         done!
   
       specify 'Getting the original base key (one too short) should fail.' (done) ->
@@ -151,8 +148,7 @@ describe "API" ->
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         expect data.length .to.equal VALUELENGTH
         expect data .to.equal "#{basevalue}E"
-        expect err, err .to.be.null
-        expect res.statusCode .to.equal 200
+        check_err err, res, 'aotgtfl', 200
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
@@ -160,8 +156,7 @@ describe "API" ->
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         expect data.length .to.equal VALUELENGTH
         expect data.slice -10 .to.equal 'vvvvvvvvvE'
-        expect err, err .to.be.null
-        expect res.statusCode .to.equal 200
+        check_err err, res, 'vtligc', 200
         done!
   
   describe '/getkey' ->
@@ -174,8 +169,7 @@ describe "API" ->
     specify 'should get a key' (done) ->
       err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
       expect data .to.equal "zoowahhhh"
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 200
+      check_err err, res, 'sgak', 200
       done!
   
     specify 'should fail on bad bucket' (done) ->
@@ -201,8 +195,7 @@ describe "API" ->
     specify 'should delete a key' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
       expect data, "should delete a key" .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sdak', 204
       # Make sure it's gone.
       err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
       expect data .to.equal err.message .to.equal 'Entry not found.'
@@ -228,16 +221,14 @@ describe "API" ->
         <- api_setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}E"
         expect data, "full length" .to.be.empty
-        expect err, err .to.be.null
-        expect res.statusCode, "on E delete" .to.equal 204
+        check_err err, res, 'aotgtfl', 204
         done!
     
       specify 'Add a bunch, but only the first is going to count.' (done) ->
         <- api_setkey bucket, _, basekey + "EXTRASTUFF"
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
         expect data, "add a bunch" .to.be.empty
-        expect err, err .to.be.null
-        expect res.statusCode, "on EYUPMAN delete" .to.equal 204
+        check_err err, res, 'aabbotfigtc', 204
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
@@ -267,7 +258,7 @@ describe "API" ->
   
     specify 'should list keys' (done) ->
       err, req, res, data <- client.get "/listkeys/#{bucket}"
-      expect err, err .to.be.null
+      check_err err, res, 'slk', 200
       expect res.statusCode .to.equal 200
       objs = JSON.parse data
       expect objs .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
@@ -275,8 +266,7 @@ describe "API" ->
   
     specify 'should list JSON keys' (done) ->
       err, req, res, data <- json_client.get "/listkeys/#{bucket}"
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 200
+      check_err err, res, 'sljk', 200
       expect data .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
       done!
   
@@ -292,12 +282,10 @@ describe "API" ->
     specify 'should delete the bucket' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/someDamnedThing"
       expect data, "should delete bucket" .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sdtb', 204
       err, req, res, data <- client.get "/delbucket/#{bucket}"
       expect data, "should delete bucket 2" .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sdtb2', 204
       done!
   
     specify 'should fail on unknown bucket' (done) ->
@@ -314,17 +302,14 @@ describe "API" ->
       # Delete the keys.
       err, req, res, data <- client.get "/delkey/#{bucket}/someDamnedThing"
       expect data, "should fail if entries" .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sfibha', 204
       err, req, res, data <- client.get "/delkey/#{bucket}/Yup"
       expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sfibha2', 204
       # Then try to delete the bucket again.
       err, req, res, data <- client.get "/delbucket/#{bucket}"
       expect data .to.be.empty
-      expect err, err .to.be.null
-      expect res.statusCode .to.equal 204
+      check_err err, res, 'sfibha3', 204
       done!
   
   describe 'utf-8' ->
@@ -343,8 +328,7 @@ describe "API" ->
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         # But we expect proper UTF-8 back.
         expect data,"data no match" .to.equal utf_string
-        expect err, "get #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 200
+        check_err err, res, "get #{tag}: #{err}", 200
         done!
   
     utf_case_post = (tag, utf_string) ->
@@ -366,9 +350,7 @@ describe "API" ->
         err, req, res, data <- client.post "/delkey" do
           * bucket: bucket
             key: utf_string
-        expect err, "post-get #{tag}: #{err}" .to.be.null
-        expect res.statusCode .to.equal 204
-  
+        check_err err, res, "post-get #{tag}: #{err}", 204
         done!
   
     #
@@ -397,16 +379,14 @@ describe "API" ->
   describe 'web site proxying' ->
     specify 'getting index.html should proxy' (done) ->
       err, req, res, data <- client.get "/index.html"
-      expect err, "err index.html" .to.be.null
-      expect res.statusCode, "index.html status" .to.equal 200
+      check_err err, res, 'wsb', 200
       expect res.headers['content-type'], "index.html content" .to.equal 'text/html'
       expect data, "index.html data" .to.not.be.empty
       done!
 
     specify 'getting /w should proxy' (done) ->
       err, req, res, data <- client.get "/w"
-      expect err, "err /w" .to.be.null
-      expect res.statusCode, "/w status" .to.equal 200
+      check_err err, res, 'g/wsp', 200
       expect res.headers['content-type'], "/w content" .to.equal 'text/html'
       expect data, "/w data" .to.not.be.empty
       done!
