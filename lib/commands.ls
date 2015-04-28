@@ -9,13 +9,28 @@ MAXVALUELENGTH = 65536
 
 riak_client = null # Here to allow stubbing by tests.
 
+#
+# Retry Riak connection if it errors.
+# Need to augment to not reconnect in certain instances.
+#
+confirm_no_error = (err, result, next, cb) ->
+  if err != null
+    do 
+      <- setTimeout _, 200
+      init!
+      cb!
+    return
+  next err, result
+
 export fetchValue = (bucket, key, next) ->
   key .= substr 0, MAXKEYLENGTH
   riak_client.fetchValue do
     * bucket: bucket
       key: key
       convertToJs: false
-    next
+    (err, result) ->
+      <- confirm_no_error err, result, next
+      fetchValue bucket, key, next
 
 export storeValue = (bucket, key, value, next) ->
   key .= substr 0, MAXKEYLENGTH
@@ -27,7 +42,9 @@ export storeValue = (bucket, key, value, next) ->
     * bucket: bucket
       key: key
       value: value
-    next
+    (err, result) ->
+      <- confirm_no_error err, result, next
+      storeValue bucket, key, value, next
 
 confirm_exists = (bucket, cb, rest) ->
   err, result <- fetchValue 'buckets' bucket
@@ -71,14 +88,17 @@ Create a new bucket.
 
 export listkeys = (bucket, cb) ->
   <- confirm_exists bucket, cb
-  err, result <- riak_client.secondaryIndexQuery do
+  riak_client.secondaryIndexQuery do
     * bucket: bucket
       indexName: '$bucket'
       indexKey: '_'
       stream: false
-  return cb err if err
-  values = [..objectKey for result.values]
-  cb null, values
+    (err, result) ->
+      values = null
+      if result.values
+        values := [..objectKey for result.values]
+      <- confirm_no_error err, values, cb
+      listkeys bucket, cb
 
 listkeys.params =
   * bucket: "The bucket name."
