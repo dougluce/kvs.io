@@ -110,6 +110,8 @@ bunyan.getLogger = (name) ->
 
 export standalone = ->
   logger = bunyan.getLogger 'api'
+  is_prod = process.env.NODE_ENV == 'production'
+
   cli.init! # Fire up the CLI system.
   cli.start_telnetd if is_prod then 23 else 7002
 
@@ -120,7 +122,6 @@ export standalone = ->
   server = restify.createServer options
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
-  is_prod = process.env.NODE_ENV == 'production'
   init server
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
@@ -133,7 +134,6 @@ export standalone = ->
     secure_server = restify.createServer options
     secure_server.on 'after' restify.auditLogger do
       * log: bunyan.getLogger 'api'
-    is_prod = process.env.NODE_ENV == 'production'
     init secure_server
     <- secure_server.listen if is_prod then 443 else 8081
     cli.start_upgrader secure_server, "secure" # Allow upgrades to CLI
