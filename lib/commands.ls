@@ -52,7 +52,7 @@ export newbucket = (info, ip, cb) ->
 newbucket.params =
   * info: "Information about the bucket creator.", private: true
   * ip: "IP address of the creator.", private: true
-
+newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
 
 newbucket.doc = """
@@ -79,7 +79,7 @@ export listkeys = (bucket, cb) ->
 listkeys.params =
   * bucket: "The bucket name."
   ...
-
+listkeys.success = 200
 listkeys.doc = """
 List the keys in a bucket.
 """
@@ -108,7 +108,7 @@ export delbucket = (bucket, cb) ->
 delbucket.params =
   * bucket: "The bucket to delete."
   ...
-
+delbucket.success = 204
 delbucket.doc = """
 Delete a bucket.
 """
@@ -126,7 +126,7 @@ setkey.params =
   * bucket: "The bucket name."
   * key: "The key."
   * value: "The value."
-
+setkey.success = 201
 setkey.doc = """
 Set the value of a key in a bucket.
 """
@@ -144,7 +144,7 @@ export getkey = (bucket, key, cb) ->
 getkey.params =
   * bucket: "The bucket name."
   * key: "The key."
-
+getkey.success = 200
 getkey.doc = """
 Get the value of a key in a bucket.
 """
@@ -167,8 +167,7 @@ export delkey = (bucket, key, cb) ->
 delkey.params =
   * bucket: "The bucket with this key."
   * key: "The key to delete."
-  ...
-
+delkey.success = 204
 delkey.doc = """
 Delete a key from a bucket.
 """

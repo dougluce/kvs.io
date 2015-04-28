@@ -7,6 +7,7 @@ require! {
   ipware
   './commands'
   './cli'
+  'prelude-ls': {map}
 }
 
 log = null
@@ -26,7 +27,22 @@ handle_error = (err, next, good) ->
   return next new restify.InternalServerError err if err # May leak errors externally
   good! # If there's no error, continue on!
   next!
-  
+
+#
+# Fill in the facts if I have them.
+#
+pre_resolve = (params, facts) ->
+  newparams = []
+  optionals = 0
+  for param in params
+    for key, val of param
+      if facts[key]
+        newparams.push facts[key]
+      else
+        newparams.push null unless key in [\optional \private]
+        optionals++ if param['optional']
+  return [optionals, newparams]
+
 function newbucket req, res, next
   (err, bucket_name) <- commands.newbucket req.headers, ipware!get_ip req
   <- handle_error err, next
@@ -82,16 +98,36 @@ export init = (server) ->
   server.use restify.bodyParser!
   server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
     request.get 'http://w.kvs.io/' + req.params[0] .pipe res
-  server.get '/newbucket/' newbucket
-  server.get '/setkey/:bucket/:key/:value' setkey
+
+  for commandname, command of commands
+    httpparams = []
+    if command.params
+      for param in command.params
+        continue if param['private']
+        for paramname, doc of param
+          httpparams.push paramname
+      let ht = httpparams, cm = command
+        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" (req, res, next) ->
+          facts = req.params with 
+            info: req.headers
+            ip: ipware!get_ip req
+#          for p in ht
+#            facts[p] = req.params[p]
+          [optcount, params] = pre_resolve cm.params, facts
+          params.push (err, result) ->
+            <- handle_error err, next
+            res.send cm.success, result
+          cm.apply commands, params
+
+#  server.get '/newbucket/' newbucket
+#  server.get '/setkey/:bucket/:key/:value' setkey
   server.post '/setkey' setkey
-  server.get '/getkey/:bucket/:key' getkey
+#  server.get '/getkey/:bucket/:key' getkey
   server.post '/getkey' getkey
-  server.get '/delkey/:bucket/:key' delkey
+#  server.get '/delkey/:bucket/:key' delkey
   server.post '/delkey' delkey
-  server.get '/listkeys/:bucket' listkeys
-  server.get '/delbucket/:bucket' delbucket
-  server.get '/noop' (rq, rs, nx) -> rs.send 200; nx! 
+#  server.get '/listkeys/:bucket' listkeys
+#  server.get '/delbucket/:bucket' delbucket
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
