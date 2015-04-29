@@ -137,8 +137,8 @@ describe "API" ->
   
       specify 'Getting the original base key (one too short) should fail.' (done) ->
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}"
-        expect data .to.equal err.message .to.equal 'Entry not found.'
-        expect err.statusCode .to.equal 404
+        expect data .to.equal 'Entry not found.'
+        expect res.statusCode .to.equal 404
         done!
   
     describe "only the first #{VALUELENGTH} value chars count." (done) ->
@@ -182,8 +182,9 @@ describe "API" ->
   
     specify 'should fail on unknown key' (done) ->
       err, req, res, data <- client.get "/getkey/#{bucket}/nokey"
-      expect data .to.equal err.message .to.equal 'Entry not found.'
-      expect err.statusCode .to.equal 404
+      expect data .to.equal 'Entry not found.'
+      expect err.message .to.equal 'Entry not found.'
+      expect res.statusCode .to.equal 404
       done!
   
   describe '/delkey' ->
@@ -196,11 +197,12 @@ describe "API" ->
   
     specify 'should delete a key' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/wazoo"
-      expect data, "should delete a key" .to.be.empty
+      expect data, "should delete a key" .to.equal ""
       check_err err, res, 'sdak', 204
       # Make sure it's gone.
       err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
-      expect data .to.equal err.message .to.equal 'Entry not found.'
+      expect data .to.equal 'Entry not found.'
+      expect err.message .to.equal 'Entry not found.'
       expect res.statusCode .to.equal 404
       done!
   
@@ -329,7 +331,7 @@ describe "API" ->
         <- api_setkey bucket, _, key, querystring.escape utf_string
         err, req, res, data <- client.get "/getkey/#{bucket}/#{key}"
         # But we expect proper UTF-8 back.
-        expect data,"data no match" .to.equal utf_string
+        expect data .to.equal utf_string
         check_err err, res, "get #{tag}: #{err}", 200
         done!
   
@@ -359,7 +361,11 @@ describe "API" ->
     # Trim the huge number of UTF cases in development to shorten test
     # runs while still getting some coverage.
     #
-    if process.env.NODE_ENV == 'development'
+    if process.env.NODE_ENV == 'test'
+      driver = (case_runner) ->
+        for tag, utf_string of utfCases
+          case_runner tag, utf_string
+    else
       driver = (case_runner) ->
         keys = Object.keys utfCases
         for til 10
@@ -367,10 +373,6 @@ describe "API" ->
           tag = keys.splice(key_number,1)
           utf_string = utfCases[tag]
           case_runner(tag, utf_string)
-    else
-      driver = (case_runner) ->
-        for tag, utf_string of utfCases
-          case_runner tag, utf_string
   
     describe 'gets' ->
       driver utf_case_get

@@ -2,6 +2,7 @@ require! {
   'basho-riak-client': Riak
   crypto
   ipware
+  async
 }
 
 MAXKEYLENGTH = 256
@@ -149,12 +150,29 @@ setkey.doc = """
 Set the value of a key in a bucket.
 """
 
-export getkey = (bucket, key, cb) ->
+export getkey = (bucket, keys, cb) ->
   <- confirm_exists bucket, cb
   # Yup, look for the key.
-  err, result <- fetchValue bucket, key
-  <- confirm_found err, result, cb
-  cb null, result.values.shift!value.toString 'utf8'
+  try  # Allow multiple keys as JSON string.
+    keylist = JSON.parse keys .map (.substr 0, MAXKEYLENGTH)
+  catch
+    keylist = [keys.substr 0, MAXKEYLENGTH]
+  results = {}
+  async.each keylist, (key, done) ->
+    err, result <- fetchValue bucket, key
+    return done err if err
+    results[key] = if not result or result.isNotFound
+      null 
+    else
+      result.values.shift!value.toString 'utf8'
+    done!
+  , (err) ->
+    return cb err if err
+    if keylist.length == 1
+      <- confirm_found err, results[keylist[0]], cb
+      cb null, results[keylist[0]]
+    else
+      cb null, results
 
 getkey.params =
   * bucket: "The bucket name."

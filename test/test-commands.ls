@@ -276,7 +276,7 @@ describe "Commands" ->
     # Trim the huge number of UTF cases in development to shorten test
     # runs while still getting some coverage.
     #
-    if process.env.NODE_ENV == 'development'
+    if process.env.NODE_ENV != 'test'
       driver = (case_runner) ->
         keys = Object.keys utfCases
         for til 10
@@ -296,7 +296,7 @@ describe "Commands" ->
           expect err, "UCG1 err" .to.be.null
           err, value <- commands.getkey bucket, utf_string
           expect err, "UCG2 err" .to.be.null      
-          expect value,"value no match" .to.equal utf_string
+          expect value, "value no match" .to.equal utf_string
           done!
   
 
