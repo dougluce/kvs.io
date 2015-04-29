@@ -11,7 +11,7 @@ require! {
   fs
 }
 
-log = null
+logger = null
 
 errors = 
   'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
@@ -38,12 +38,14 @@ function contentTypeChecker req, res, next
 #
 # Fill in the facts if I have them.
 #
-pre_resolve = (params, facts) ->
+resolve = (params, facts) ->
   newparams = []
   for param in params
     for key, val of param
       if facts[key]
         newparams.push facts[key]
+  if newparams.length != params.length
+    return null
   return newparams
 
 makeroutes = (server) ->
@@ -53,15 +55,19 @@ makeroutes = (server) ->
       for param in command.params
         continue if param['private']
         httpparams ++= Object.keys param
-      let ht = httpparams, cm = command
+      let name = commandname, ht = httpparams, cm = command
         handler = (req, res, next) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
-          params = pre_resolve cm.params, facts
+          params = resolve cm.params, facts
+          if params == null
+            return res.send 400, "params incorrect"
           params.push (err, result) ->
             <- handle_error err, next
             res.send cm.success, result
+            params.pop!
+            logger.info name, params
           cm.apply commands, params
         server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler
         server.post "/#commandname" handler
