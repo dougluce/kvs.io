@@ -9,6 +9,7 @@ require! {
   '../lib/api'
   crypto
   domain
+  bunyan
 }
 
 KEYLENGTH = 256 # Significant length of keys.
@@ -29,12 +30,13 @@ describe "API" ->
 
   before (done) ->
     @timeout 3000
-  
+    logger = bunyan.getLogger 'test-api'  
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       sandbox.stub Riak, "Client", ->
         utils.stub_riak_client
-  
+
+    logstub = sandbox.stub logger
     server := restify.createServer!
     runServer = ->
       <- server.listen 8088
@@ -50,7 +52,7 @@ describe "API" ->
         else
           throw err
       ..run runServer
-    api.init server
+    api.init server, logstub
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'

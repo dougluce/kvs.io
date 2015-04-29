@@ -72,7 +72,8 @@ makeroutes = (server) ->
         server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler
         server.post "/#commandname" handler
 
-export init = (server) ->
+export init = (server, logobj) ->
+  logger := logobj
   server.use contentTypeChecker
   server.use restify.bodyParser!
   server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
@@ -128,7 +129,7 @@ export standalone = ->
   server = restify.createServer options
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
-  init server
+  init server, logger
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
   console.log '%s listening at %s', server.name, server.url
