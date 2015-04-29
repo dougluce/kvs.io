@@ -11,8 +11,6 @@ require! {
   fs
 }
 
-logger = null
-
 errors = 
   'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
   'not found': [restify.NotFoundError, "Entry not found."]
@@ -48,7 +46,7 @@ resolve = (params, facts) ->
     return null
   return newparams
 
-makeroutes = (server) ->
+makeroutes = (server, logger) ->
   for commandname, command of commands
     if command.params
       httpparams = []
@@ -74,7 +72,7 @@ makeroutes = (server) ->
         server.post "/#commandname" handler
 
 export init = (server, logobj) ->
-  logger := logobj
+  logger = logobj
   server.use contentTypeChecker
   server.use restify.bodyParser!
   server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
@@ -89,7 +87,7 @@ export init = (server, logobj) ->
       options.headers['referer'] = req.headers['referer']
     request options .pipe res
   commands.init!
-  makeroutes server
+  makeroutes server, logger
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
