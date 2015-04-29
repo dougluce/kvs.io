@@ -142,7 +142,7 @@ export standalone = ->
       * log: bunyan.getLogger 'api'
     init secure_server
     <- secure_server.listen if is_prod then 443 else 8081
-    cli.start_upgrader secure_server, "secure" # Allow upgrades to CLI
+    cli.start_upgrader secure_server # Allow upgrades to CLI
     console.log '%s listening at %s', secure_server.name, secure_server.url
 
 if !module.parent # Run stand-alone
