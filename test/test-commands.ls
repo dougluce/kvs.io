@@ -136,11 +136,42 @@ describe "Commands" ->
     before (done) ->
       (newbucket) <- utils.markedbucket true
       bucket := newbucket
-      commands.setkey bucket, "warzoo", "nozoo", done
+      <- commands.setkey bucket, "warzoo", "nozoo"
+      <- commands.setkey bucket, "fofrzoo", "rennets"
+      <- commands.setkey bucket, '{"one": "two"}', 'yup'
+      done!
   
     specify 'should get a key' (done) ->
       err, value <- commands.getkey bucket, 'warzoo'
       expect value .to.equal "nozoo"
+      expect err, err .to.be.null
+      done!
+  
+    specify 'should get multiple keys' (done) ->
+      err, value <- commands.getkey bucket, '["warzoo","fofrzoo"]'
+      expect value .to.eql do
+        warzoo: 'nozoo'
+        fofrzoo: 'rennets' 
+      expect err, err .to.be.null
+      done!
+  
+    specify 'should get a right key and wrong key' (done) ->
+      err, value <- commands.getkey bucket, '["warzoo","xfofrzoo"]'
+      expect value .to.eql do
+        warzoo: 'nozoo'
+        xfofrzoo: null
+      expect err, err .to.be.null
+      done!
+  
+    specify 'should get all wrong keys' (done) ->
+      err, value <- commands.getkey bucket, '["parzoo","xfofrzoo"]'
+      expect value .to.be.undefined
+      expect err, err .to.equal 'not found'
+      done!
+  
+    specify 'should be ok with "object" key' (done) ->
+      err, value <- commands.getkey bucket, '{"one": "two"}'
+      expect value .to.equal "yup"
       expect err, err .to.be.null
       done!
   

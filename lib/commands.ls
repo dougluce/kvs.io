@@ -152,27 +152,29 @@ Set the value of a key in a bucket.
 
 export getkey = (bucket, keys, cb) ->
   <- confirm_exists bucket, cb
-  # Yup, look for the key.
   try  # Allow multiple keys as JSON string.
-    keylist = JSON.parse keys .map (.substr 0, MAXKEYLENGTH)
+    keylist = JSON.parse keys
+    throw unless keylist instanceof Array
   catch
-    keylist = [keys.substr 0, MAXKEYLENGTH]
+    keylist = [keys]
+  keylist = keylist.map (.substr 0, MAXKEYLENGTH)
   results = {}
+  found = 0
   async.each keylist, (key, done) ->
     err, result <- fetchValue bucket, key
     return done err if err
     results[key] = if not result or result.isNotFound
       null 
     else
+      found++
       result.values.shift!value.toString 'utf8'
     done!
   , (err) ->
     return cb err if err
+    return cb 'not found' if found == 0
     if keylist.length == 1
-      <- confirm_found err, results[keylist[0]], cb
-      cb null, results[keylist[0]]
-    else
-      cb null, results
+      results := results[keylist[0]]
+    cb null, results
 
 getkey.params =
   * bucket: "The bucket name."
