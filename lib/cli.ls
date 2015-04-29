@@ -18,6 +18,7 @@ shortcuts =
   lk: 'listkeys'
   dk: 'delkey'
   db: 'delbucket'
+  admin: 'root'
 
 facts = cli_commands = null
 
@@ -50,7 +51,7 @@ accept_web_connection = (req, socket, head) ->
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
       fd: socket._handle.fd
-    log.info facts
+    log.info "connect", facts
     return cli_open socket
   socket.end!
 
@@ -63,7 +64,7 @@ accept_telnet_connection = (socket) ->
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
     fd: fd
-  log.info facts
+  log.info "connect", facts
   cli_open socket
 
 #
@@ -110,14 +111,14 @@ function define_locals
   #
   # Quit this CLI session.
   #
-  cli_commands.quit = quit = (w, socket, cb) ->
+  cli_commands.quit = (w, socket, cb) ->
     w "Disconnecting."
     return socket.end!
   
   cli_commands.quit.params =
     * w: "Write socket", private: true
     * socket: "The socket to close."
-  
+
   cli_commands.quit.doc = """
   Quit your session.
   """
@@ -158,6 +159,17 @@ function define_locals
   Show help.
   """
 
+  #
+  # Playing with idiots.
+  #
+  cli_commands.root = (rl, cb) ->
+    rl.setPrompt '#'
+    cb!
+
+  cli_commands.root.params =
+    * rl: "Readline object", private: true
+    ...
+
 #
 # Fill in the facts if I have them.
 #
@@ -182,6 +194,7 @@ do_parse = (line, rl, socket) ->
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
   facts["w"] = w
   facts["socket"] = socket
+  facts["rl"] = rl
   [first, ...rest] = line / ' '
   first = shortcuts[first] ? first
   if first == ""
