@@ -95,7 +95,7 @@ export start_telnetd = (port = 7002) ->
 #
 
 export start_upgrader = (server, tag = "") ->
-  log := bunyan.getLogger 'cli_upgrader#tag'
+  log := bunyan.getLogger "cli_upgrader#tag"
   # For Web version
   server.server.on 'connect' accept_web_connection
 
