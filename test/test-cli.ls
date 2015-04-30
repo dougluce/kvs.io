@@ -5,49 +5,8 @@ require! {
   './utils'
   sinon
   bunyan
-  net
 }
 
-class Connector
-  buffer = ''
-  count = 0
-  cb = client = null
-  
-  (host, port, connect_cb) ->
-    client := net.connect port, '127.0.0.1', ->
-      buffer := ''
-      connect_cb client
-    client.on 'end', (data) ->
-      lines = buffer.split /\r\n/
-      cb lines.splice 0, count
-    client.on 'data', (data) ->
-      buffer += data.toString!
-      lines = buffer.split /\r\n/
-      if lines.length >= count and (lines[lines.length-1].length > 0)
-        ret = lines.splice 0, count
-        buffer := lines.join "\r\n"
-        cb ret
-
-  end: ->
-    client.end!
-
-  wait_end: (cb) ->
-    client.on 'end' cb
-
-  wait: (new_count, new_cb) ->
-    cb := new_cb
-    count := new_count
-
-  send: (data, new_count, new_cb) ->
-    cb := new_cb
-    count := new_count
-    client.write data + "\r"
-
-  rest: (cb) ->
-    lines = buffer.split /\r\n/
-    buffer := ''
-    cb lines
-  
 describe "CLI alone" ->
   d = sandbox = telnet_server = null
 
@@ -71,7 +30,7 @@ describe "CLI alone" ->
     done!
 
   beforeEach (done) ->
-    d := new Connector '127.0.0.1', 7008, ->
+    d := new utils.Connector '127.0.0.1', 7008, ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
       expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
@@ -136,7 +95,7 @@ describe "CLI full commands" ->
     done!
 
   beforeEach (done) ->
-    d := new Connector '127.0.0.1', 7009, ->
+    d := new utils.Connector '127.0.0.1', 7009, ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
       expect x .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
