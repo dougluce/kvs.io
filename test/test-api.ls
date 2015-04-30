@@ -1,6 +1,5 @@
 require! {
   chai: {expect}
-  restify
   querystring
   sinon
   './utils'
