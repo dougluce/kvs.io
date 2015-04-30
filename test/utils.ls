@@ -91,7 +91,7 @@ export deleteall = (bucket, done) ->
   expect err, "delbucket #err" .to.be.null
   done!
 
-export after_all = (done) ->
+export cull_test_buckets = (done) ->
   async.each test_buckets, (bucket, done) ->
     <- deleteall bucket
     done!

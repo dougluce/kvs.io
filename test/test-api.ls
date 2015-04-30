@@ -41,7 +41,7 @@ describe "API" ->
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- utils.after_all
+    <- utils.cull_test_buckets
     client.close!
     json_client.close!
     <- server.close

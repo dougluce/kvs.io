@@ -43,13 +43,13 @@ class Connector
     count := new_count
     client.write data + "\r"
 
-  rest: (ocb) ->
+  rest: (cb) ->
     lines = buffer.split /\r\n/
     buffer := ''
-    ocb lines
+    cb lines
   
 describe "CLI alone" ->
-  d = sandbox = server = telnet_server = null
+  d = sandbox = telnet_server = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
@@ -65,7 +65,7 @@ describe "CLI alone" ->
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- utils.after_all
+    <- utils.cull_test_buckets
     <- telnet_server.close
     sandbox.restore!
     done!
@@ -116,7 +116,7 @@ describe "CLI alone" ->
     done!
 
 describe "CLI full commands" ->
-  d = sandbox = server = telnet_server = null
+  d = sandbox = telnet_server = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
@@ -127,13 +127,10 @@ describe "CLI full commands" ->
     commands.init!
     cli.init! # Full set of commands.
     telnet_server := cli.start_telnetd 7009
-    s <- utils.startServer 8089
-    server := s
     done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- server.close
     <- telnet_server.close
     sandbox.restore!
     done!

@@ -26,7 +26,7 @@ describe "Commands" ->
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- utils.after_all
+    <- utils.cull_test_buckets
     sandbox.restore!
     done!
   
