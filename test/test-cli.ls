@@ -1,6 +1,5 @@
 require! {
   chai: {expect}
-  restify
   '../lib/cli'
   '../lib/commands'
   './utils'
@@ -54,21 +53,19 @@ describe "CLI alone" ->
 
   before (done) ->
     sandbox := sinon.sandbox.create!
-    sandbox.stub bunyan, 'getLogger', ->
-      info: sandbox.stub!
     if process.env.NODE_ENV != 'test'
+      sandbox.stub bunyan, 'getLogger', ->
+        info: sandbox.stub!
       utils.stub_riak_client sandbox
 
-    s <- utils.startServer 8089
-    server := s
     cli.init {} # use CLI-only commands.
+
     telnet_server := cli.start_telnetd 7008
     done!
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     <- utils.after_all
-    <- server.close
     <- telnet_server.close
     sandbox.restore!
     done!
@@ -165,7 +162,7 @@ describe "CLI full commands" ->
     expect data[data.length-1], 'hsgmac2' .to.equal '>'
     done!
     
-  xspecify 'newbucket should create a bucket -- and show me info' (done) ->
+  specify 'newbucket should create a bucket -- and show me info' (done) ->
     data <- d.send 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
     expect data[1] .to.equal '>'

@@ -39,7 +39,12 @@ test_buckets = [] # Keep track of for later removal.
 export bucket_metadata = (bucket, done) ->
   err, result <- commands.fetchValue 'buckets' bucket
   return done err if err
-  done null, JSON.parse result.values.shift!value.toString 'utf8'
+  value = result.values.shift!
+  try # works in test/prod
+    done null, JSON.parse value.value.toString 'utf8'
+  catch # works in dev
+    done null, value
+  
 
 export mark_bucket = (bucket, done) ->
   # Mark this bucket as being a test one.
@@ -106,7 +111,8 @@ export stub_riak_client = (sinon) ->
         return cb null, {isNotFound: true, values: []}
       unless stub_riak[bucket][key]
         return cb null, {isNotFound: true, values: []}
-      cb null, {values: [stub_riak[bucket][key]]}
+
+      cb null, {values: [ stub_riak[bucket][key] ]}
     storeValue: (options, cb) ->
       {bucket, key, value} = options
       console.log "Storing #bucket/#key <- #value" if DEBUG
