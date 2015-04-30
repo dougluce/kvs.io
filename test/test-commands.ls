@@ -5,7 +5,6 @@ require! {
   sinon
   './utils'
   './utf-cases'
-  'basho-riak-client': Riak
   '../lib/commands'
   crypto
   domain
@@ -20,8 +19,7 @@ describe "Commands" ->
   before (done) ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
-      sandbox.stub Riak, "Client", ->
-        utils.stub_riak_client
+      utils.stub_riak_client sandbox
     commands.init!
     utils.clients!
     done!

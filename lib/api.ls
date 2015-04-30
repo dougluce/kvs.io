@@ -1,5 +1,4 @@
 require! {
-  'basho-riak-client': Riak
   restify
   request
   bunyan
@@ -24,13 +23,8 @@ handle_error = (err, next, good) ->
   next!
 
 rh = 0
-function contentTypeChecker req, res, next
+function setHeader req, res, next
   res.setHeader 'Server' 'kvs.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
-  # Favor JSON over text.
-  if req.accepts 'text/plain'
-    res.ct = 'text/plain'
-  if req.accepts 'application/json'
-    res.ct = 'application/json'
   next!
 
 #
@@ -71,21 +65,25 @@ makeroutes = (server, logger) ->
         server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler
         server.post "/#commandname" handler
 
+
+web_proxy = (req, res, next) ->
+  res.setHeader 
+  options = 
+    url: 'http://w.kvs.io' + req.params[0]
+    headers: 
+      'X-Forwarded-For': ipware!get_ip(req).clientIp
+  if req.headers['user-agent']
+    options.headers['user-agent'] = req.headers['user-agent']
+  if req.headers['referer']
+    options.headers['referer'] = req.headers['referer']
+  request.get options .pipe res
+  next!
+
 export init = (server, logobj) ->
   logger = logobj
-  server.use contentTypeChecker
+  server.use setHeader
   server.use restify.bodyParser!
-  server.get /^(|\/|\/index.html|\/w.*)$/ (req, res) ->
-    res.setHeader 
-    options = 
-      url: 'http://w.kvs.io' + req.params[0]
-      headers: 
-        'X-Forwarded-For': ipware!get_ip(req).clientIp
-    if req.headers['user-agent']
-      options.headers['user-agent'] = req.headers['user-agent']
-    if req.headers['referer']
-      options.headers['referer'] = req.headers['referer']
-    request options .pipe res
+  server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
   req, res, route, err <- server.on 'uncaughtException' 
@@ -128,15 +126,25 @@ export standalone = ->
   server = restify.createServer options
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
+
+  unless is_prod # So we can manually test
+    console.log "NOT PRODUCTION -- RUNNING IN FAKE RIAK MODE"
+    require! {
+      '../test/utils': {stub_riak_client}
+      sinon
+    }
+    stub_riak_client sinon
+    
   init server, logger
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
   console.log '%s listening at %s', server.name, server.url
 
   # HTTPS server
-  do
+  try
     options['key'] = fs.readFileSync '/etc/ssl/kvs.io.key'
     options['certificate'] = fs.readFileSync '/etc/ssl/kvs.io.crt'
+  if options['key'] and options['certificate']
     secure_server = restify.createServer options
     secure_server.on 'after' restify.auditLogger do
       * log: bunyan.getLogger 'api'

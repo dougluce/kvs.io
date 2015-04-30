@@ -5,7 +5,7 @@ require! {
   sinon
   './utils'
   './utf-cases'
-  'basho-riak-client': Riak
+  request
   '../lib/api'
   crypto
   domain
@@ -33,8 +33,7 @@ describe "API" ->
     logger = bunyan.getLogger 'test-api'  
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
-      sandbox.stub Riak, "Client", ->
-        utils.stub_riak_client
+      utils.stub_riak_client sandbox
 
     logstub = sandbox.stub logger
     server := restify.createServer!
@@ -381,6 +380,15 @@ describe "API" ->
       driver utf_case_post
 
   describe 'web site proxying' ->
+    before (done) ->
+      if process.env.NODE_ENV != 'test'
+        sandbox.stub request, "get" (options) ->
+          return
+            pipe: (res) ->
+              res.writeHead 200, "content-type": 'text/html'
+              res.end 'body goes here'
+        done!
+
     specify 'getting index.html should proxy' (done) ->
       err, req, res, data <- client.get "/index.html"
       check_err err, res, 'wsb', 200

@@ -241,7 +241,7 @@ function cli_open socket
     if data.readUInt8(0) == 255
       got_options := true
   socket.on 'data', option_checker
-  <- setTimeout _, 300 # To allow for option eating
+  <- setTimeout _, 30 # To allow for option eating
   
   socket.removeListener 'data', option_checker
   rl := readline.createInterface socket, socket, null, got_options
