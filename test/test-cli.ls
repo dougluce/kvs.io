@@ -5,7 +5,6 @@ require! {
   '../lib/commands'
   './utils'
   sinon
-  domain
   bunyan
   net
 }
@@ -59,23 +58,12 @@ describe "CLI alone" ->
       info: sandbox.stub!
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
-    server := restify.createServer!
-    runServer = ->
-      <- server.listen 8089
-      console.log '[CLI] %s server listening at %s', server.name, server.url
-      utils.clients!
-      done!
-    domain.create!
-      ..on 'error' (err) ->
-        if /EADDRINUSE/ == err
-          <- setTimeout _, 100
-          console.log "Re-running on #err"
-          return runServer!
-        else
-          throw err
-      ..run runServer
+
+    s <- utils.startServer 8089
+    server := s
     cli.init {} # use CLI-only commands.
     telnet_server := cli.start_telnetd 7008
+    done!
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
@@ -139,25 +127,13 @@ describe "CLI full commands" ->
       info: sandbox.stub!
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
-    server := restify.createServer!
     commands.init!
     cli.init! # Full set of commands.
     telnet_server := cli.start_telnetd 7009
-    runServer = ->
-      <- server.listen 8089
-      console.log '[CLI] %s server listening at %s', server.name, server.url
-      utils.clients!
-      done!
-    domain.create!
-      ..on 'error' (err) ->
-        if /EADDRINUSE/ == err
-          <- setTimeout _, 100
-          console.log "Re-running on #err"
-          return runServer!
-        else
-          throw err
-      ..run runServer
-  
+    s <- utils.startServer 8089
+    server := s
+    done!
+
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     <- server.close

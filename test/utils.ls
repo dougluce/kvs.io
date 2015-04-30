@@ -6,6 +6,7 @@ require! {
   restify
   crypto
   '../lib/commands'
+  domain
 }
 
 #
@@ -128,3 +129,19 @@ export stub_riak_client = (sinon) ->
         delete stub_riak[bucket][key]
       cb null, true
 
+export startServer = (port, done) ->
+  server = restify.createServer!
+  runServer = ->
+    <- server.listen port
+    console.log '%s server listening at %s', server.name, server.url
+    [client, json_client] = clients!
+    done server, client, json_client
+  domain.create!
+    ..on 'error' (err) ->
+      if /EADDRINUSE/ == err
+        <- setTimeout _, 100
+        console.log "Re-running on #err"
+        return runServer!
+      else
+        throw err
+    ..run runServer

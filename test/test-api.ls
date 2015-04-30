@@ -8,7 +8,6 @@ require! {
   request
   '../lib/api'
   crypto
-  domain
   bunyan
 }
 
@@ -34,24 +33,11 @@ describe "API" ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
-
     logstub = sandbox.stub logger
-    server := restify.createServer!
-    runServer = ->
-      <- server.listen 8088
-      console.log '%s server listening at %s', server.name, server.url
-      [client, json_client] := utils.clients!
-      done!
-    domain.create!
-      ..on 'error' (err) ->
-        if /EADDRINUSE/ == err
-          <- setTimeout _, 100
-          console.log "Re-running on #err"
-          return runServer!
-        else
-          throw err
-      ..run runServer
+    s, c, j <- utils.startServer 8088
+    [server, client, json_client] := [s, c, j]
     api.init server, logstub
+    done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
