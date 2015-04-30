@@ -1,6 +1,7 @@
 {
   "name": "kvs.io",
   "version": "0.0.1",
+  "private": true,
   "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
