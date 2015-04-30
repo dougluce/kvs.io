@@ -65,7 +65,7 @@ makeroutes = (server, logger) ->
             <- handle_error err, next
             res.send cm.success, result
             params.pop!
-            logger.info name, params
+            logger.info params, name
           cm.apply commands, params
 
         server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler

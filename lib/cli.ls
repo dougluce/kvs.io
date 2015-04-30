@@ -43,7 +43,7 @@ for dev, addresses of os.networkInterfaces!
         continue
       my_ip.push address.address
 
-my_ip = my_ip.join ', '
+my_ip := my_ip.join ', '
 
 accept_web_connection = (req, socket, head) ->
   if req.url == 'cli'
@@ -51,7 +51,7 @@ accept_web_connection = (req, socket, head) ->
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
       fd: socket._handle.fd
-    logger.info "connect", facts
+    logger.info facts, "connect"
     return cli_open socket
   socket.end!
 
@@ -64,7 +64,7 @@ accept_telnet_connection = (socket) ->
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
     fd: fd
-  logger.info "connect", facts
+  logger.info facts, "connect"
   cli_open socket
 
 #
