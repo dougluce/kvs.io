@@ -20,16 +20,6 @@ describe "CLI alone" ->
     cli.init {} # use CLI-only commands.
 
     telnet_server := cli.start_telnetd 7008
-    done!
-  
-  after (done) ->
-    @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- utils.cull_test_buckets
-    <- telnet_server.close
-    sandbox.restore!
-    done!
-
-  beforeEach (done) ->
     d := new utils.Connector '127.0.0.1', 7008, ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
@@ -39,12 +29,15 @@ describe "CLI alone" ->
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!
-
-  afterEach (done) ->
-    d.wait_end ->
-      done!
+  
+  after (done) ->
+    @timeout 100000 if process.env.NODE_ENV == 'test'
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
+    <- telnet_server.close
+    <- utils.cull_test_buckets
+    sandbox.restore!
+    done!
 
   specify 'help should give me help' (done) ->
     data <- d.send 'help', 4
@@ -79,22 +72,15 @@ describe "CLI full commands" ->
 
   before (done) ->
     sandbox := sinon.sandbox.create!
-    sandbox.stub bunyan, 'getLogger', ->
-      info: sandbox.stub!
     if process.env.NODE_ENV != 'test'
+      sandbox.stub bunyan, 'getLogger', ->
+        info: sandbox.stub!
       utils.stub_riak_client sandbox
+
     commands.init!
     cli.init! # Full set of commands.
+
     telnet_server := cli.start_telnetd 7009
-    done!
-
-  after (done) ->
-    @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- telnet_server.close
-    sandbox.restore!
-    done!
-
-  beforeEach (done) ->
     d := new utils.Connector '127.0.0.1', 7009, ->
       data <- d.wait 1 # Wait for telnet options
       x = new Buffer data[0] .toString 'base64'
@@ -105,11 +91,14 @@ describe "CLI full commands" ->
       expect data .to.eql ['>']
       done!
 
-  afterEach (done) ->
-    d.wait_end ->
-      done!
+  after (done) ->
+    @timeout 100000 if process.env.NODE_ENV == 'test'
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
+    <- telnet_server.close
+    <- utils.cull_test_buckets
+    sandbox.restore!
+    done!
 
   specify 'help should give me another command' (done) ->
     data <- d.send 'help', 4
