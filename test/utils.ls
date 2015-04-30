@@ -115,11 +115,10 @@ export stub_riak_client = (sinon) ->
       cb null, {}
     secondaryIndexQuery: (options, cb) ->
       {bucket, indexName, indexKey, stream} = options
-      unless stub_riak[bucket] and Object.keys(stub_riak[bucket]).length > 0
+      unless stub_riak[bucket]
         return cb null, {values: []}
-      values = []
-      for key in Object.keys(stub_riak[bucket])
-        values.push {indexKey: null, objectKey: key}
+      values = [{indexKey: null, objectKey: key} \
+        for key in Object.keys(stub_riak[bucket])]
       return cb null, {values: values}
     deleteValue: (options, cb) ->
       {bucket, key} = options

@@ -244,7 +244,7 @@ describe "Commands" ->
   
     before (done) ->
       @timeout 10000
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       <- commands.setkey bucket, "woohoo", "value here"
       <- commands.setkey bucket, "werp", "value here"
@@ -257,10 +257,24 @@ describe "Commands" ->
   
     specify 'should list keys' (done) ->
       err, values <- commands.listkeys bucket
-      expect err, err .to.be.null
+      expect err, 'slk' .to.be.null
       expect values .to.have.members ["testbucketinfo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
       done!
-  
+
+    specify 'should list keys of non-existent bucket' (done) ->
+      err, values <- commands.listkeys "BARQUET"
+      expect err, 'slkoneb' .to.equal 'not found'
+      expect values .to.have.undefined
+      done!
+
+    specify 'should list keys of empty bucket' (done) ->
+      err, emptybucket <- commands.newbucket "Info string", "192.231.221.256"
+      err, values <- commands.listkeys emptybucket
+      <- utils.mark_bucket emptybucket
+      expect err, 'slkoeb' .to.be.null
+      expect values, 'slkoebv' .to.eql []
+      done!
+
   describe '/delbucket' ->
     bucket = ""
   
