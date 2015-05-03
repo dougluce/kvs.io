@@ -78,6 +78,7 @@ web_proxy = (req, res, next) ->
     options.headers['user-agent'] = req.headers['user-agent']
   if req.headers['referer']
     options.headers['referer'] = req.headers['referer']
+  console.log options
   request.get options .pipe res
   next!
 

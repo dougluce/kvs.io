@@ -373,6 +373,8 @@ describe "API" ->
               res.writeHead 200, "content-type": 'text/html'
               res.end 'body goes here'
         done!
+      else
+        done!
 
     specify 'getting index.html should proxy' (done) ->
       err, req, res, data <- client.get "/index.html"

@@ -135,7 +135,7 @@ export startServer = (port, done) ->
   runServer = ->
     <- server.listen port
     console.log '%s server listening at %s', server.name, server.url
-    [client, json_client] = clients!
+    [client, json_client] = clients port
     done server, client, json_client
   domain.create!
     ..on 'error' (err) ->
