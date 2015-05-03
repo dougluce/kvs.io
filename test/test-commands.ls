@@ -32,7 +32,7 @@ describe "Commands" ->
   
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      err, newbucket <- commands.newbucket "Info string", "192.231.221.256"
+      err, newbucket <- commands.newbucket "Info string", "192.231.221.256", "scab test"
       expect err, "newbucket #err" .to.be.null
       expect newbucket .to.match /^[0-9a-zA-Z]{20}$/
       <- utils.mark_bucket newbucket
@@ -41,7 +41,7 @@ describe "Commands" ->
     specify 'crypto error on bucket creation' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb "Crypto error"
-      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", "ceobc test"
       expect err .to.equal 'Crypto error'
       expect newbucket .to.be.undefined
       done!
@@ -49,11 +49,11 @@ describe "Commands" ->
     specify 'Bad bucket creation error' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb null, "INEXPLICABLYSAMERANDOMDATA"
-      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test'
       expect err .to.equal null
       expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
       
-      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257"
+      err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test 2'
       expect err, err .to.equal 'bucket already exists'
       done!
   
@@ -268,7 +268,7 @@ describe "Commands" ->
       done!
 
     specify 'should list keys of empty bucket' (done) ->
-      err, emptybucket <- commands.newbucket "Info string", "192.231.221.256"
+      err, emptybucket <- commands.newbucket "Info string", "192.231.221.256", 'slkoeb'
       err, values <- commands.listkeys emptybucket
       <- utils.mark_bucket emptybucket
       expect err, 'slkoeb' .to.be.null

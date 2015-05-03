@@ -61,7 +61,7 @@ confirm_found = (err, result, cb, rest) ->
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
-export newbucket = (info, ip, cb) ->
+export newbucket = (info, ip, test, cb) ->
   ex, buf <- crypto.randomBytes 15
   return cb ex if ex
   # URL- and hostname-safe strings.
@@ -75,12 +75,14 @@ export newbucket = (info, ip, cb) ->
     ip: ip
     date: new Date!toISOString!
     info: info # Additional info identifying bucket creator
+  value['test'] = test if test
   <- storeValue "buckets", bucket_name, value
   cb null, bucket_name
 
 newbucket.params =
   * info: "Information about the bucket creator.", private: true
   * ip: "IP address of the creator.", private: true
+  * test: "Marks this as a test bucket", optional: true, private: true
 newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
 newbucket.doc = """

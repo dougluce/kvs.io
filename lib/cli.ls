@@ -51,6 +51,8 @@ accept_web_connection = (req, socket, head) ->
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
       fd: socket._handle.fd
+    if process.env.NODE_ENV != 'production'
+      facts['test'] = "env #{process.env.NODE_ENV}"
     logger.info facts, "connect"
     return cli_open socket
   socket.end!
@@ -64,6 +66,8 @@ accept_telnet_connection = (socket) ->
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
     fd: fd
+  if process.env.NODE_ENV != 'production'
+    facts['test'] = "env #{process.env.NODE_ENV}"
   logger.info facts, "connect"
   cli_open socket
 

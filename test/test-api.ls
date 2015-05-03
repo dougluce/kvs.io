@@ -14,7 +14,7 @@ KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
 check_err = (err, res, where, status) ->
-  expect err, "err #where" .to.be.null
+  expect err?message, "err #where" .to.be.undefined
   expect res.statusCode, "status #where" .to.equal status
 
 describe "API" ->

@@ -20,14 +20,14 @@ export BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
 now = new Date!
 riak_client = client = json_client = null
 
-export clients = (port = 8088) ->
+export clients = (port = 8088, host = "127.0.0.1") ->
   client := restify.createStringClient do
     * version: '*'
-      url: "http://127.0.0.1:#port"
+      url: "http://#host:#port"
       
   json_client := restify.createJsonClient do
     * version: '*'
-      url: "http://127.0.0.1:#port"
+      url: "http://#host:#port"
   
   riak_client :=
     riak_client := new Riak.Client ['127.0.0.1']
@@ -59,7 +59,10 @@ export mark_bucket = (bucket, done) ->
 # Mark means to mark it for later deletion.
 # Set false for tests that will delete the bucket.
 export markedbucket = (mark, done) ->
-  err, bucket <- commands.newbucket "Run on #{os.hostname!} at #now", "127.0.0.1"
+  test = false
+  if process.env.NODE_ENV != 'production'
+    test = "env #{process.env.NODE_ENV}"
+  err, bucket <- commands.newbucket "Run on #{os.hostname!} at #now", "127.0.0.1", test
   expect err .to.be.null
   if mark
     <- mark_bucket bucket
@@ -78,14 +81,15 @@ export deleteall = (bucket, done) ->
         indexKey: '_'
         stream: false
     expect err, "deleteall from #bucket #err" .to.be.null
-    keys = [..objectKey for result.values]
+    keys := [..objectKey for result.values]
     async.each keys, (key, done) ->
       err, result <- riak_client.deleteValue do
         * bucket: bucket
           key: key
       done!
     , cb
-  , -> (keys.length > 0)
+  , ->
+    keys.length > 0
   err, result <- riak_client.deleteValue do
     * bucket: 'buckets'
       key: bucket

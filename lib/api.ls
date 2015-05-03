@@ -52,6 +52,8 @@ makeroutes = (server, logger) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
+          if process.env.NODE_ENV != 'production'
+            facts['test'] = "env #{process.env.NODE_ENV}"
           params = resolve cm.params, facts
           if params == null
             return res.send 400, "params incorrect"
@@ -127,8 +129,8 @@ export standalone = ->
   server.on 'after' restify.auditLogger do
     * log: bunyan.getLogger 'api'
 
-  unless is_prod # So we can manually test
-    console.log "NOT PRODUCTION -- RUNNING IN FAKE RIAK MODE"
+  if process.env.NODE_ENV not in ['production', 'test']
+    console.log "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
     require! {
       '../test/utils': {stub_riak_client}
       sinon
