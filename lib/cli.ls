@@ -91,7 +91,7 @@ export start_telnetd = (port = 7002) ->
   telnet_server = net.createServer accept_telnet_connection
   telnet_server.maxConnections = 10;
   telnet_server.listen port
-  logger.info "Telnet server on #port"
+  logger.info "Telnet server started on #port"
   return telnet_server
 
 #
@@ -193,7 +193,7 @@ pre_resolve = (params) ->
 #
 
 do_parse = (line, rl, socket) ->
-  logger.info {fd: socket._handle.fd}, "command: #line"
+  logger.info {fd: socket._handle.fd}, "cli: #line"
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
   facts["w"] = w
   facts["socket"] = socket
