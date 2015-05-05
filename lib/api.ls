@@ -127,7 +127,7 @@ export standalone = ->
 
   if is_prod
     try
-      pid = npid.create '/var/run/kvsio/kvsio.pid'
+      pid = npid.create '/var/run/kvsio/kvsio.pid', True # Force pid creation
       pid.removeOnExit!
     catch err
       console.log err
