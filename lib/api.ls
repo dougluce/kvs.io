@@ -8,6 +8,7 @@ require! {
   './cli'
   'prelude-ls': {map}
   fs
+  npid
 }
 
 errors = 
@@ -123,6 +124,14 @@ bunyan.getLogger = (name) ->
 export standalone = ->
   logger = bunyan.getLogger 'api'
   is_prod = process.env.NODE_ENV == 'production'
+
+  if is_prod
+    try
+      pid = npid.create '/var/run/kvsio/kvsio.pid'
+      pid.removeOnExit!
+    catch err
+      console.log err
+      process.exit 1
 
   cli.init! # Fire up the CLI system.
   cli.start_telnetd if is_prod then 23 else 7002
