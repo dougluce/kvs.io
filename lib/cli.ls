@@ -50,7 +50,10 @@ accept_web_connection = (req, socket, head) ->
     facts :=
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
-      fd: socket._handle.fd
+    facts['fd'] = if socket._handle
+      socket._handle.fd
+    else
+      "unknown FD"
     if process.env.NODE_ENV != 'production'
       facts['test'] = "env #{process.env.NODE_ENV}"
     logger.info facts, "connect"
@@ -237,6 +240,7 @@ function cli_open socket
     do_parse line, rl, socket
 
   # Tell Telnet to not buffer.
+  <- setTimeout _, 200 # To allow for drainage
   buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
   socket.write buf, 'binary'
 
@@ -245,7 +249,7 @@ function cli_open socket
     if data.readUInt8(0) == 255
       got_options := true
   socket.on 'data', option_checker
-  <- setTimeout _, 30 # To allow for option eating
+  <- setTimeout _, 200 # To allow for option eating
   
   socket.removeListener 'data', option_checker
   rl := readline.createInterface socket, socket, null, got_options

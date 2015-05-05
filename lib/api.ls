@@ -79,7 +79,6 @@ web_proxy = (req, res, next) ->
     options.headers['user-agent'] = req.headers['user-agent']
   if req.headers['referer']
     options.headers['referer'] = req.headers['referer']
-  console.log options
   request.get options .pipe res
   next!
 
@@ -134,7 +133,7 @@ export standalone = ->
       process.exit 1
 
   cli.init! # Fire up the CLI system.
-  cli.start_telnetd if is_prod then 23 else 7002
+  cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
 
   options =
     name: 'kvs.io'
@@ -142,10 +141,10 @@ export standalone = ->
 
   server = restify.createServer options
   server.on 'after' restify.auditLogger do
-    * log: bunyan.getLogger 'api'
+    * log: logger
 
   if process.env.NODE_ENV not in ['production', 'test']
-    console.log "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
+    logger.info "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
     require! {
       '../test/utils': {stub_riak_client}
       sinon
@@ -155,7 +154,7 @@ export standalone = ->
   init server, logger
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
-  console.log '%s listening at %s', server.name, server.url
+  logger.info '%s listening at %s', server.name, server.url
 
   # HTTPS server
   try
@@ -168,7 +167,7 @@ export standalone = ->
     init secure_server
     <- secure_server.listen if is_prod then 443 else 8081
     cli.start_upgrader secure_server # Allow upgrades to CLI
-    console.log '%s listening at %s', secure_server.name, secure_server.url
+    logger.info '%s listening at %s', secure_server.name, secure_server.url
 
 if !module.parent # Run stand-alone
   standalone!
