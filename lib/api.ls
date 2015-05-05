@@ -110,10 +110,15 @@ bunyan.defaultStreams =
     path: "#logpath/kvsio-error.log"
 
 bunyan.getLogger = (name) ->
-  if bunyan.defaultStreams
+  log = if bunyan.defaultStreams
     bunyan.createLogger name: name, streams: bunyan.defaultStreams
   else
     bunyan.createLogger name: name
+
+  process.on 'SIGUSR2' ->
+    log.reopenFileStreams!
+
+  log
 
 export standalone = ->
   logger = bunyan.getLogger 'api'
