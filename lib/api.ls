@@ -92,23 +92,23 @@ export init = (server, logobj) ->
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
-prettyStdOut = new PrettyStream!
-prettyStdOut.pipe process.stderr
-
-logpath = "/tmp"
-
 if process.env.NODE_ENV == 'production'
   logpath = "#{process.env.HOME}/logs"
-
-bunyan.defaultStreams = 
-  * level: 'info',
-    type: 'raw'
-    stream: prettyStdOut
-  * level: 'info',
-    path: "#logpath/kvsio-access.log"
-  * level: 'error',
-    path: "#logpath/kvsio-error.log"
-
+  bunyan.defaultStreams :=
+    * level: 'error',
+      path: "#logpath/kvsio-error.log"
+    * level: 'info',
+      path: "#logpath/kvsio-access.log"
+else
+  prettyStdOut = new PrettyStream!
+  prettyStdOut.pipe process.stderr
+  bunyan.defaultStreams :=
+    * level: 'debug',
+      path: "/tmp/kvsio-debug.log"
+    * level: 'debug',
+      type: 'raw'
+      stream: prettyStdOut
+    
 bunyan.getLogger = (name) ->
   log = if bunyan.defaultStreams
     bunyan.createLogger name: name, streams: bunyan.defaultStreams
