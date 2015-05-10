@@ -1,7 +1,7 @@
 require! {
   restify
   '../utils'
-  benchtable
+  benchmark
   crypto
   '../../lib/commands'
   os
@@ -43,7 +43,7 @@ if err
 
 errs = 0
 
-suite = new benchtable
+suite = new benchmark.Suite
 
 bb = (defer) ->
   crypto = require 'crypto'
