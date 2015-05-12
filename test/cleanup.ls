@@ -8,6 +8,8 @@ require! {
 
 riak_client = new Riak.Client ['127.0.0.1']
 
+CONCURRENCY = 20
+
 all_keys = (bucket, cb) ->
   riak_client.secondaryIndexQuery do
     * bucket: bucket
@@ -55,7 +57,7 @@ deregister = (bucket, done) ->
 
 deregister_all = ->
   err, req, res, data <- json_client.get "/listkeys/#BUCKETLIST"
-  async.each data, (bucket, done) ->
+  async.eachLimit data, CONCURRENCY, (bucket, done) ->
     deregister bucket, done
   , (err) ->
     client.close!
@@ -70,7 +72,7 @@ deregister_all = ->
 find_local_keys = (cb) ->
   candidate_keys <- all_keys 'buckets'
   keys = []  
-  async.each candidate_keys, (key, done) ->
+  async.eachLimit candidate_keys, CONCURRENCY, (key, done) ->
     riak_client.fetchValue do
       * bucket: 'buckets'
         key: key
@@ -88,7 +90,7 @@ find_local_keys = (cb) ->
 
 prune_bucket_registry = ->
   keys <- all_keys 'buckets'
-  async.each keys, (bucket, done) ->
+  async.eachLimit keys, CONCURRENCY, (bucket, done) ->
     if bucket == BUCKETLIST  or bucket == 'buckets' # Should never actually happen.
       console.log "Skipping BUCKETLIST #bucket"
       return done!
@@ -98,7 +100,7 @@ prune_bucket_registry = ->
         convertToJs: false
       (err, result) ->
         o = JSON.parse result.values.shift!value.toString 'utf8'
-        if o.test
+        if o.test # It's a test bucket.
           console.log "Removing test bucket #bucket from #{o.test}"
           err <- deleteall bucket
           if err
@@ -106,6 +108,7 @@ prune_bucket_registry = ->
             return done err
           else
             deregister bucket, done
+        done!
   , (err) ->
     client.close!
     json_client.close!
@@ -117,7 +120,7 @@ prune_bucket_registry = ->
 #
 
 destroy_buckets = (buckets) ->
-  async.each buckets, (bucket, done) ->
+  async.eachLimit buckets, CONCURRENCY, (bucket, done) ->
     if bucket == BUCKETLIST  or bucket == 'buckets' # Should never actually happen.
       console.log "Skipping BUCKETLIST #bucket"
       return done!
@@ -142,7 +145,7 @@ destroy_bucket_list = (cb) ->
   err, req, res, data <- json_client.get "/listkeys/#BUCKETLIST"
   console.log err
   console.log data
-  async.each data, (bucket, done) ->
+  async.eachLimit data, CONCURRENCY, (bucket, done) ->
     if bucket == BUCKETLIST  or bucket == 'buckets' # Should never actually happen.
       console.log "Skipping BUCKETLIST #bucket"
       return done!
@@ -161,7 +164,7 @@ destroy_bucket_list = (cb) ->
 
 kill_various_buckets = (cb) ->
   buckets <- all_buckets
-  async.eachLimit buckets, 1, (bucket, done) ->
+  async.eachLimit buckets, CONCURRENCY, (bucket, done) ->
     if bucket == BUCKETLIST or bucket == 'buckets' # Should never actually happen.
       console.log "Skipping BUCKETLIST #bucket"
       return done!
