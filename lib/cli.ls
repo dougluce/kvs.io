@@ -122,8 +122,14 @@ function define_locals
     return socket.end!
   
   cli_commands.quit.params =
-    * w: "Write socket", private: true
-    * socket: "The socket to close."
+    * name: 'w'
+      description: "Write socket"
+      required: true
+      'x-private': true
+    * name: 'socket'
+      description: "The socket to close."
+      required: true
+      'x-private': true
 
   cli_commands.quit.doc = """
   Quit your session.
@@ -135,12 +141,11 @@ function define_locals
         pstrings = []
         commstring = ""
         for param in cli_commands[command].params
-          unless param.private
-            for key, val of param
-              continue if key in [\optional \private]
-              pstrings.push "  #key: #val"
-              key = "[#key]" if param.optional
-              commstring += " " + key
+          continue if param['x-private']
+          pstrings.push "  #{param.name}: #{param.description}"
+          p = param.name
+          p = "[#p]" if not param.required
+          commstring += " " + p
         w ""
         w "  #command#commstring"
         w ""
@@ -158,8 +163,13 @@ function define_locals
     cb!
   
   cli_commands.help.params =
-    * w: "Write socket", private: true
-    * command: "Command to get help on", optional: true
+    * name: 'w'
+      description: "Write socket"
+      'x-private': true
+      required: true
+    * name: 'command'
+      description: "Command to get help on"
+      required: false
   
   cli_commands.help.doc = """
   Show help.
@@ -173,7 +183,10 @@ function define_locals
     cb!
 
   cli_commands.root.params =
-    * rl: "Readline object", private: true
+    * name: 'rl'
+      description: "Readline object"
+      'x-private': true
+      required: true
     ...
 
 #
@@ -183,12 +196,8 @@ pre_resolve = (params) ->
   newparams = []
   optionals = 0
   for param in params
-    for key, val of param
-      if facts[key]
-        newparams.push facts[key]
-      else
-        newparams.push null unless key in [\optional \private]
-        optionals++ if param['optional']
+    newparams.push facts[param['name']]
+    optionals++ if not param['required']
   return [optionals, newparams]
 
 #

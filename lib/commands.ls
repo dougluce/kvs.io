@@ -80,9 +80,18 @@ export newbucket = (info, ip, test, cb) ->
   cb null, bucket_name
 
 newbucket.params =
-  * info: "Information about the bucket creator.", private: true
-  * ip: "IP address of the creator.", private: true
-  * test: "Marks this as a test bucket", optional: true, private: true
+  * name: 'info'
+    description: "Information about the bucket creator."
+    required: true
+    'x-private': true
+  * name: 'ip'
+    description: "IP address of the creator."
+    required: true
+    'x-private': true
+  * name: 'test'
+    description: "Marks this as a test bucket"
+    required: false
+    'x-private': true
 newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
 newbucket.doc = """
@@ -104,7 +113,9 @@ export listkeys = (bucket, cb) ->
       listkeys bucket, cb
 
 listkeys.params =
-  * bucket: "The bucket name."
+  * name: 'bucket'
+    description: "The bucket name."
+    required: true
   ...
 listkeys.success = 200
 listkeys.doc = """
@@ -129,7 +140,9 @@ export delbucket = (bucket, cb) ->
   cb null
 
 delbucket.params =
-  * bucket: "The bucket to delete."
+  * name: 'bucket'
+    description: "The bucket to delete."
+    required: true
   ...
 delbucket.success = 204
 delbucket.doc = """
@@ -144,9 +157,15 @@ export setkey = (bucket, key, value, cb) ->
   cb null
 
 setkey.params =
-  * bucket: "The bucket name."
-  * key: "The key."
-  * value: "The value."
+  * name: 'bucket'
+    description: "The bucket name."
+    required: true
+  * name: 'key'
+    description: "The key."
+    required: true
+  * name: 'value'
+    description: "The value."
+    required: true
 setkey.success = 201
 setkey.doc = """
 Set the value of a key in a bucket.
@@ -179,8 +198,12 @@ export getkey = (bucket, keys, cb) ->
     cb null, results
 
 getkey.params =
-  * bucket: "The bucket name."
-  * key: "The key."
+  * name: 'bucket'
+    description: "The bucket name."
+    required: true
+  * name: 'key'
+    description: "The key."
+    required: true
 getkey.success = 200
 getkey.doc = """
 Get the value of a key in a bucket.
@@ -198,8 +221,12 @@ export delkey = (bucket, key, cb) ->
   cb null
 
 delkey.params =
-  * bucket: "The bucket with this key."
-  * key: "The key to delete."
+  * name: 'bucket'
+    description: "The bucket with this key."
+    required: true
+  * name: 'key'
+    description: "The key to delete."
+    required: true
 delkey.success = 204
 delkey.doc = """
 Delete a key from a bucket.
@@ -221,8 +248,12 @@ export findkeys = (bucket, keyword, cb) ->
       findkeys bucket, cb
 
 findkeys.params =
-  * bucket: "The bucket name."
-  * keyword: "A substring to search for."
+  * name: 'bucket'
+    description: "The bucket name."
+    required: true
+  * name: 'keyword'
+    description: "A substring to search for."
+    required: true
 findkeys.success = 200
 findkeys.doc = """
 Find keys in a bucket that contain a given substring.

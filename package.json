@@ -28,7 +28,8 @@
     "npid": "^0.4.0",
     "prelude-ls": "^1.1.1",
     "request": "^2.55.0",
-    "restify": "^3.0.2"
+    "restify": "^3.0.2",
+    "swagger-doc": "^0.2.0"
   },
   "devDependencies": {
     "benchmark": "^1.0.0",

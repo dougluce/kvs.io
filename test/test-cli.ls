@@ -106,7 +106,20 @@ describe "CLI full commands" ->
     data <- d.rest
     expect data[data.length-1], 'hsgmac2' .to.equal '>'
     done!
-    
+
+  specify 'help listkeys should give me help on listkeys' (done) ->
+    data <- d.send 'help listkeys', 7
+    expect data, 'hlsgmhol' .to.eql do
+      * ''
+        '  listkeys bucket'
+        ''
+        'List the keys in a bucket.'
+        '  bucket: The bucket name.'
+        ''
+        '>'
+    done!
+
+
   specify 'newbucket should create a bucket -- and show me info' (done) ->
     data <- d.send 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/

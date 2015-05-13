@@ -9,6 +9,7 @@ require! {
   'prelude-ls': {map}
   fs
   npid
+  'swagger-doc'
 }
 
 errors = 
@@ -34,20 +35,24 @@ function setHeader req, res, next
 resolve = (params, facts) ->
   newparams = []
   for param in params
-    for key, val of param
-      if facts[key]
-        newparams.push facts[key]
+    if facts[param['name']]
+      newparams.push facts[param['name']]
   if newparams.length != params.length
     return null
   return newparams
 
 makeroutes = (server, logger) ->
+  swaggerDoc.configure server, do
+    version: "0.1"
+    basePath: 'localhost:8080'
+  docs = swaggerDoc.createResource "/swag"
   for commandname, command of commands
+
     if command.params
       httpparams = []
       for param in command.params
-        continue if param['private']
-        httpparams ++= Object.keys param
+        continue if param['x-private']
+        httpparams ++= param['name']
       let name = commandname, ht = httpparams, cm = command
         handler = (req, res, next) ->
           facts = req.params with 
@@ -65,8 +70,16 @@ makeroutes = (server, logger) ->
             logger.info params, "api: name"
           cm.apply commands, params
 
-        server.get "/#commandname/#{ht.map( (x) -> \: + x ).join '/'}" handler
+        params = ht.map( (x) -> \: + x ).join '/'
+        params := '/' + params if params
+        server.get "/#commandname#params" handler
         server.post "/#commandname" handler
+
+#        docs.get "/#commandname#params", "Does something", do
+#          notes: "Notes right here"
+#          nickname: "Nick right here"
+#          parameters:
+#            {name:"id", description: "Id of payment", required:true, dataType: "string", paramType: "path"}
 
 
 web_proxy = (req, res, next) ->
@@ -140,8 +153,8 @@ export standalone = ->
     log: logger
 
   server = restify.createServer options
-  server.on 'after' restify.auditLogger do
-    * log: logger
+    ..on 'after' restify.auditLogger do
+      * log: logger
 
   if process.env.NODE_ENV not in ['production', 'test']
     logger.info "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
@@ -152,6 +165,13 @@ export standalone = ->
     stub_riak_client sinon
     
   init server, logger
+
+#  sre.init server, do
+#    resourceName: 'swag'
+#    server: 'restify'
+#    httpMethods: ['GET', 'POST']
+#    basePath: 'http://localhost:8080'
+
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
   logger.info '%s listening at %s', server.name, server.url
