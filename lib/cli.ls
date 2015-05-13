@@ -136,31 +136,33 @@ function define_locals
   """
   
   cli_commands.help = (w, command, cb) ->
-    if command
-      if cli_commands[command]?doc
-        pstrings = []
-        commstring = ""
-        for param in cli_commands[command].params
-          continue if param['x-private']
-          pstrings.push "  #{param.name}: #{param.description}"
-          p = param.name
-          p = "[#p]" if not param.required
-          commstring += " " + p
-        w ""
-        w "  #command#commstring"
-        w ""
-        w that
-        for x in pstrings
-          w x
-        w ""
-      else
-        w "#command is not known."
-    else
+    if not command
       w "Commands available:"
-      for command, junk of cli_commands
+      for command of cli_commands
         if cli_commands[command].doc
           w "  #command -- #that"
-    cb!
+      return cb!
+
+    if cli_commands[command]?doc
+      pstrings = []
+      commstring = ""
+      for param in cli_commands[command].params
+        continue if param['x-private']
+        p = param.name
+        pstrings.push "  #p: #{param.description}"
+        p = "[#p]" if not param.required
+        commstring += " " + p
+      w ""
+      w "  #command#commstring"
+      w ""
+      w that
+      for x in pstrings
+        w x
+      w ""
+      cb!
+    else
+      w "#command is not known."
+      cb!
   
   cli_commands.help.params =
     * name: 'w'
