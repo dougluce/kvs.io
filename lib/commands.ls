@@ -204,3 +204,31 @@ delkey.success = 204
 delkey.doc = """
 Delete a key from a bucket.
 """
+
+export findkeys = (bucket, keyword, cb) ->
+  <- confirm_exists bucket, cb
+  keyword .= toLowerCase!
+  riak_client.secondaryIndexQuery do
+    * bucket: bucket
+      indexName: '$bucket'
+      indexKey: '_'
+      stream: false
+    (err, result) ->
+      values = null
+      if result.values
+        values := [..objectKey for result.values when ..objectKey.toLowerCase!indexOf(keyword) != -1]
+      <- confirm_no_error err, values, cb
+      findkeys bucket, cb
+
+findkeys.params =
+  * bucket: "The bucket name."
+  * keyword: "A substring to search for."
+findkeys.success = 200
+findkeys.doc = """
+Find keys in a bucket that contain a given substring.
+"""
+
+findkeys.returnformatter = (w, keys) -> 
+  w "Found keys in bucket:"
+  for key in keys
+    w key

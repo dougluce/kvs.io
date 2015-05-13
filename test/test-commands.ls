@@ -307,6 +307,75 @@ describe "Commands" ->
       expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
   
+  describe '/findkeys' ->
+    bucket = ""
+    
+    basekey = Array KEYLENGTH .join 'x' # For key length checking
+  
+    before (done) ->
+      @timeout 10000
+      newbucket <- utils.markedbucket true
+      bucket := newbucket
+      <- commands.setkey bucket, "woohoo", "value here"
+      <- commands.setkey bucket, "werpawhoo", "value here"
+      <- commands.setkey bucket, "StaggeringlyLessEfficient", "value here"
+      <- commands.setkey bucket, "EatingItStraightOutOfTheBag", "value here"
+      <- commands.setkey bucket, "WhoeverKnowsShouldKnow", "value here"
+      <- commands.setkey bucket, "#{basekey}WHOP", "value here"
+      <- commands.setkey bucket, "#{basekey}WERP", "value here" # Should get lost...
+      <- commands.setkey bucket, "#{basekey}", "value here"
+      <- commands.setkey bucket, "#{basekey.substr 0, KEYLENGTH-4}awho", "value here"
+      <- commands.setkey bucket, "#{basekey.substr 0, KEYLENGTH-3}awho", "value here" # Should be truncated
+      done!
+
+    specify 'empty string should find all keys' (done) ->
+      err, values <- commands.findkeys bucket, ''
+      expect err, 'essfak' .to.be.null
+      expect values .to.have.members do
+        * "testbucketinfo"
+          "werpawhoo"
+          "woohoo"
+          "StaggeringlyLessEfficient"
+          "EatingItStraightOutOfTheBag"
+          "WhoeverKnowsShouldKnow"
+          "#{basekey}W"
+          basekey
+          "#{basekey.substr 0, KEYLENGTH-4}awho"
+          "#{basekey.substr 0, KEYLENGTH-3}awh"
+      done!
+
+    specify 'A string can find matching keys, caselessly' (done) ->
+      err, values <- commands.findkeys bucket, 'wHo'
+      expect err, 'ascfmkc' .to.be.null
+      expect values .to.have.members do
+        * "werpawhoo"
+          "WhoeverKnowsShouldKnow"
+          "#{basekey.substr 0, KEYLENGTH-4}awho"
+      done!
+
+    specify 'String with no matches finds nothing.' (done) ->
+      err, values <- commands.findkeys bucket, 'wrho'
+      expect err, 'swnmfn' .to.be.null
+      expect values .to.have.members []
+      done!
+
+    specify 'wont find any keys of non-existent bucket' (done) ->
+      err, values <- commands.findkeys "BARQUET", ''
+      expect err, 'wfakoneb' .to.equal 'not found'
+      expect values .to.have.undefined
+      done!
+
+    specify 'should find no keys in empty bucket' (done) ->
+      err, emptybucket <- commands.newbucket "Info string", "192.231.221.256", 'slkoeb'
+      err, values <- commands.findkeys emptybucket, ''
+      <- utils.mark_bucket emptybucket
+      expect err, 'sfnkieb' .to.be.null
+      expect values, 'sfnkieb2' .to.eql []
+      done!
+
+
+
+
   describe 'utf-8' ->
     bucket = ""
   
