@@ -181,12 +181,43 @@ function define_locals
   # Playing with idiots.
   #
   cli_commands.root = (rl, cb) ->
-    rl.setPrompt '#'
+    rl.setPrompt '# '
     cb!
 
   cli_commands.root.params =
     * name: 'rl'
       description: "Readline object"
+      'x-private': true
+      required: true
+    ...
+
+  cli_commands.sh = (rl, cb) ->
+    rl.setPrompt '$ '
+    cb!
+
+  cli_commands.sh.params =
+    * name: 'rl'
+      description: "Readline object"
+      'x-private': true
+      required: true
+    ...
+
+  #
+  # More playing with idiots.
+  #
+  cli_commands.echo = (socket, rest, cb) ->
+    end = "\r\n"
+    if '-n' in rest
+      end = ""
+    rest = [r.replace(/\\/g, '') for r in rest when r.charAt(0) != '-']
+    line = rest.join(' ')
+    socket.write "#line#end", 'utf8'
+    cb!
+
+  cli_commands.echo.variable = true
+  cli_commands.echo.params =
+    * name: 'socket'
+      description: "Write socket"
       'x-private': true
       required: true
     ...
@@ -222,24 +253,24 @@ do_parse = (line, rl, socket) ->
     [optcount, params] = pre_resolve that
     # Fill in with the rest of what we know.
     pp = [p ? rest.shift! for p in params]
-    if rest.length > 0
-      w "Too many arguments."
-      rl.prompt!
-    else if [p for p in pp when p == undefined].length > optcount
+    if rest.length > 0 and not cmd.variable
+        w "Too many arguments."
+        return rl.prompt!
+    pp.push rest if cmd.variable
+    if [p for p in pp when p == undefined].length > optcount
       w "Not enough arguments."
-      rl.prompt!
-    else
-      # Add the callback to the end.
-      pp.push (err, result) ->
-        if err
-          w err
+      return rl.prompt!
+    # Add the callback to the end.
+    pp.push (err, result) ->
+      if err
+        w err
+      else
+        if cmd.returnformatter
+          cmd.returnformatter w, result
         else
-          if cmd.returnformatter
-            cmd.returnformatter w, result
-          else
-            w result
-        rl.prompt!
-      cmd.apply cli_commands, pp
+          w result
+      rl.prompt!
+    cmd.apply cli_commands, pp
   else
     w "That command is unknown."
     rl.prompt!

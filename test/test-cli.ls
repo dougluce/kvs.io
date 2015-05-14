@@ -67,6 +67,25 @@ describe "CLI alone" ->
         '>'
     done!
 
+  specify 'echo should echo' (done) ->
+    data <- d.send 'echo something here man', 2
+    expect data, 'ese' .to.eql do
+      * 'something here man'
+        '>'
+    done!
+
+  specify 'echo eats flags, removes backslashes' (done) ->
+    data <- d.send 'echo -n -e \\"H3lL0WoRlD\\"', 1
+    expect data[0], 'ese' .to.equal '"H3lL0WoRlD">'
+    done!
+
+  specify 'echo with no args should still echo' (done) ->
+    data <- d.send 'echo', 2
+    expect data, 'ese' .to.eql do
+      * ''
+        '>'
+    done!
+
 
 describe "CLI full commands" ->
   d = sandbox = telnet_server = null
