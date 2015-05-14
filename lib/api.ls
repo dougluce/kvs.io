@@ -9,7 +9,8 @@ require! {
   'prelude-ls': {map}
   fs
   npid
-  'swagger-doc'
+  'node-restify-validation': restifyValidation
+  'node-restify-swagger': restifySwagger 
 }
 
 errors = 
@@ -42,12 +43,7 @@ resolve = (params, facts) ->
   return newparams
 
 makeroutes = (server, logger) ->
-  swaggerDoc.configure server, do
-    version: "0.1"
-    basePath: 'localhost:8080'
-  docs = swaggerDoc.createResource "/swag"
   for commandname, command of commands
-
     if command.params
       httpparams = []
       for param in command.params
@@ -72,15 +68,19 @@ makeroutes = (server, logger) ->
 
         params = ht.map( (x) -> \: + x ).join '/'
         params := '/' + params if params
-        server.get "/#commandname#params" handler
+
+        docparams = {}
+        for parm in cm.params
+          docparams[parm.name] = parm
+        server.get do
+          url: "/#commandname#params"
+          swagger:
+            description: 'descripton'
+            notes: 'My hello call notes'
+            nickname: 'sayHelloCall'
+          validation: docparams
+          , handler
         server.post "/#commandname" handler
-
-#        docs.get "/#commandname#params", "Does something", do
-#          notes: "Notes right here"
-#          nickname: "Nick right here"
-#          parameters:
-#            {name:"id", description: "Id of payment", required:true, dataType: "string", paramType: "path"}
-
 
 web_proxy = (req, res, next) ->
   res.setHeader 
@@ -99,9 +99,31 @@ export init = (server, logobj) ->
   logger = logobj
   server.use setHeader
   server.use restify.bodyParser!
+  server.use restify.CORS!
+  server.use restify.fullResponse!
+  server.use restifyValidation.validationPlugin errorsAsArray: false
+  restifySwagger.configure server, do
+    info:
+      contact: 'email@domain.tld'
+      description: 'Description text'
+      license: 'MIT'
+      licenseUrl: 'http://opensource.org/licenses/MIT'
+      termsOfServiceUrl: 'http://opensource.org/licenses/MIT'
+      title: 'Node Restify Swagger Demo'
+    apiDescriptions:
+      get: 'GET-Api Resources'
+      post: 'POST-Api Resources'
+
   server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
+  restifySwagger.loadRestifyRoutes!
+
+  server.get /^\/docs\/?.*/ restify.serveStatic directory: './swagger-ui'
+  server.get '/docs', (req, res, next) ->
+    res.header 'Location' '/docs/index.html'
+    res.send 302
+    next false
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
@@ -165,12 +187,6 @@ export standalone = ->
     stub_riak_client sinon
     
   init server, logger
-
-#  sre.init server, do
-#    resourceName: 'swag'
-#    server: 'restify'
-#    httpMethods: ['GET', 'POST']
-#    basePath: 'http://localhost:8080'
 
   <- server.listen if is_prod then 80 else 8080
   cli.start_upgrader server # Allow upgrades to CLI
