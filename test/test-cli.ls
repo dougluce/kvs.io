@@ -67,6 +67,7 @@ describe "CLI alone" ->
         '>'
     done!
 
+
 describe "CLI full commands" ->
   d = sandbox = telnet_server = null
 
@@ -129,4 +130,20 @@ describe "CLI full commands" ->
     expect result.ip .to.match /^(::ffff:)?127.0.0.1/
     expect result.info .to.match /^Via Telnet [\S+ [0-9\.]+$/
     expect result.date .to.match /^\d{4|-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ$/
+    done!
+
+  specify 'not enough params means error' (done) ->
+    data <- d.send 'setkey', 2
+    expect data, 'nepms' .to.eql ["Not enough arguments.", '>']
+    data <- d.send 'setkey hey', 2
+    expect data, 'nepms2' .to.eql ["Not enough arguments.", '>']
+    data <- d.send 'setkey hey what', 2
+    expect data, 'nepms3' .to.eql ["Not enough arguments.", '>']
+    done!
+
+  specify 'too many params means error' (done) ->
+    data <- d.send 'setkey hey whats this now', 2
+    expect data, 'tmpms' .to.eql ["Too many arguments.", '>']
+    data <- d.send 'setkey hey whats this now guys', 2
+    expect data, 'tmpms2' .to.eql ["Too many arguments.", '>']
     done!
