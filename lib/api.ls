@@ -9,10 +9,35 @@ require! {
   'prelude-ls': {map}
   fs
   npid
-  'node-restify-validation': restifyValidation
-  'node-restify-swagger': restifySwagger 
 }
 
+swagger = 
+  * swagger: "2.0"
+    info:
+      title: "API for kvs.io",
+      description: "An API for using the kvs.io key-value store.",
+      version: "0.1"
+    consumes: ["text/plain; charset=utf-8", "application/json"]
+    produces: ["text/plain; charset=utf-8", "application/json"]
+    basePath: "/"
+    paths: {}
+
+swaggerOperation = (path, cmd) ->
+  * operationId: "get#path"
+    tags: [path]
+    summary: cmd.summary
+    description: cmd.description
+    parameters: [p for p in cmd.params when not p['x-private']]
+    responses:
+      default:
+        description: "Invalid request."
+        schema:
+          "$ref": "#/definitions/Error"
+      200:
+        description: "Successful request."
+        schema:
+          "$ref": "#/definitions/Weather"
+  
 errors = 
   'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
   'not found': [restify.NotFoundError, "Entry not found."]
@@ -72,14 +97,10 @@ makeroutes = (server, logger) ->
         docparams = {}
         for parm in cm.params
           docparams[parm.name] = parm
-        server.get do
-          url: "/#commandname#params"
-          swagger:
-            description: 'descripton'
-            notes: 'My hello call notes'
-            nickname: 'sayHelloCall'
-          validation: docparams
-          , handler
+        server.get "/#commandname#params" handler
+        swagger.paths[commandname] = 
+          * get: swaggerOperation commandname, cm     
+            post: swaggerOperation commandname, cm     
         server.post "/#commandname" handler
 
 web_proxy = (req, res, next) ->
@@ -95,35 +116,22 @@ web_proxy = (req, res, next) ->
   request.get options .pipe res
   next!
 
+swaggerJson = (req, res) ->
+  res.send JSON.stringify swagger
+
 export init = (server, logobj) ->
   logger = logobj
+  swagger.host = server.name
   server.use setHeader
   server.use restify.bodyParser!
   server.use restify.CORS!
   server.use restify.fullResponse!
-  server.use restifyValidation.validationPlugin errorsAsArray: false
-  restifySwagger.configure server, do
-    info:
-      contact: 'email@domain.tld'
-      description: 'Description text'
-      license: 'MIT'
-      licenseUrl: 'http://opensource.org/licenses/MIT'
-      termsOfServiceUrl: 'http://opensource.org/licenses/MIT'
-      title: 'Node Restify Swagger Demo'
-    apiDescriptions:
-      get: 'GET-Api Resources'
-      post: 'POST-Api Resources'
 
   server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
-  restifySwagger.loadRestifyRoutes!
+  server.get "/swagger.json" swaggerJson
 
-  server.get /^\/docs\/?.*/ restify.serveStatic directory: './swagger-ui'
-  server.get '/docs', (req, res, next) ->
-    res.header 'Location' '/docs/index.html'
-    res.send 302
-    next false
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
@@ -189,6 +197,7 @@ export standalone = ->
   init server, logger
 
   <- server.listen if is_prod then 80 else 8080
+
   cli.start_upgrader server # Allow upgrades to CLI
   logger.info '%s listening at %s', server.name, server.url
 
@@ -207,3 +216,4 @@ export standalone = ->
 
 if !module.parent # Run stand-alone
   standalone!
+

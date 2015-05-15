@@ -389,3 +389,10 @@ describe "API" ->
       expect res.headers['content-type'], "/w content" .to.equal 'text/html'
       expect data, "/w data" .to.not.be.empty
       done!
+
+  describe 'swagger' ->
+    specify.only 'should have some swag' (done) ->
+      err, req, res, data <- client.get "/swagger.json"
+      swagger = JSON.parse data
+      expect swagger.swagger, 'swagger' .to.equal "2.0"
+      done!

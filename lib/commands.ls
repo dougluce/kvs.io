@@ -94,7 +94,10 @@ newbucket.params =
     'x-private': true
 newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
-newbucket.doc = """
+newbucket.summary = """
+Create a new bucket.
+"""
+newbucket.description = """
 Create a new bucket.
 """
 
@@ -118,7 +121,10 @@ listkeys.params =
     required: true
   ...
 listkeys.success = 200
-listkeys.doc = """
+listkeys.summary = """
+List the keys in a bucket.
+"""
+listkeys.description = """
 List the keys in a bucket.
 """
 
@@ -145,7 +151,10 @@ delbucket.params =
     required: true
   ...
 delbucket.success = 204
-delbucket.doc = """
+delbucket.summary = """
+Delete a bucket.
+"""
+delbucket.description = """
 Delete a bucket.
 """
 
@@ -167,7 +176,10 @@ setkey.params =
     description: "The value."
     required: true
 setkey.success = 201
-setkey.doc = """
+setkey.summary = """
+Set the value of a key in a bucket.
+"""
+setkey.description = """
 Set the value of a key in a bucket.
 """
 
@@ -205,7 +217,10 @@ getkey.params =
     description: "The key."
     required: true
 getkey.success = 200
-getkey.doc = """
+getkey.summary = """
+Get the value of a key in a bucket.
+"""
+getkey.description = """
 Get the value of a key in a bucket.
 """
 
@@ -228,7 +243,10 @@ delkey.params =
     description: "The key to delete."
     required: true
 delkey.success = 204
-delkey.doc = """
+delkey.summary = """
+Delete a key from a bucket.
+"""
+delkey.description = """
 Delete a key from a bucket.
 """
 
@@ -255,7 +273,10 @@ findkeys.params =
     description: "A substring to search for."
     required: true
 findkeys.success = 200
-findkeys.doc = """
+findkeys.summary = """
+Find keys in a bucket that contain a given substring.
+"""
+findkeys.description = """
 Find keys in a bucket that contain a given substring.
 """
 
