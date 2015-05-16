@@ -9,6 +9,8 @@ require! {
   'prelude-ls': {map}
   fs
   npid
+  'media-type'
+  contenttype
 }
 
 swagger = 
@@ -118,15 +120,30 @@ web_proxy = (req, res, next) ->
 
 swaggerJson = (req, res) ->
   res.send JSON.stringify swagger
+#
+# This is because the negotiator module will balk if any media type
+# parameter (except for q) doesn't explicitly match the server's
+# allowed parameters.  And those allowed parameters aren't allowed to
+# have parameters specified.
+#
+
+cleanAccepts = (req, res, next) ->
+    types = []
+    for type in contenttype.splitContentTypes req.headers.accept
+      media = mediaType.fromString type
+      delete media.parameters.charset
+      types.push media.asString!
+    req.headers.accept = types.join ', '
+    next!
 
 export init = (server, logobj) ->
   logger = logobj
   swagger.host = server.name
   server.use setHeader
+  server.use cleanAccepts
   server.use restify.bodyParser!
+  server.use restify.acceptParser server.acceptable
   server.use restify.CORS!
-  server.use restify.fullResponse!
-
   server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
