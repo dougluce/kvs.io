@@ -27,7 +27,7 @@
     "ipv6": "^3.1.1",
     "ipware": "0.0.5",
     "livescript": "^1.4.0",
-    "media-type": "^0.2.0",
+    "media-type": "git://github.com/dougluce/media-type.git#wildcard-type-match",
     "node-restify-swagger": "^0.1.8",
     "node-restify-validation": "^1.0.4",
     "npid": "^0.4.0",

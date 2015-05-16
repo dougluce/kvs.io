@@ -79,6 +79,7 @@ export newbucket = (info, ip, test, cb) ->
   <- storeValue "buckets", bucket_name, value
   cb null, bucket_name
 
+newbucket.group = 'buckets'
 newbucket.params =
   * name: 'info'
     description: "Information about the bucket creator."
@@ -115,6 +116,7 @@ export listkeys = (bucket, cb) ->
       <- confirm_no_error err, values, cb
       listkeys bucket, cb
 
+listkeys.group = 'buckets'
 listkeys.params =
   * name: 'bucket'
     description: "The bucket name."
@@ -145,6 +147,7 @@ export delbucket = (bucket, cb) ->
   <- confirm_found err, result, cb
   cb null
 
+delbucket.group = 'buckets'
 delbucket.params =
   * name: 'bucket'
     description: "The bucket to delete."
@@ -165,6 +168,7 @@ export setkey = (bucket, key, value, cb) ->
     ..setValue value
   cb null
 
+setkey.group = 'keys'
 setkey.params =
   * name: 'bucket'
     description: "The bucket name."
@@ -209,6 +213,7 @@ export getkey = (bucket, keys, cb) ->
       results := results[keylist[0]]
     cb null, results
 
+getkey.group = 'keys'
 getkey.params =
   * name: 'bucket'
     description: "The bucket name."
@@ -235,6 +240,7 @@ export delkey = (bucket, key, cb) ->
   <- confirm_found err, result, cb
   cb null
 
+delkey.group = 'keys'
 delkey.params =
   * name: 'bucket'
     description: "The bucket with this key."
@@ -265,6 +271,7 @@ export findkeys = (bucket, keyword, cb) ->
       <- confirm_no_error err, values, cb
       findkeys bucket, cb
 
+findkeys.group = 'search'
 findkeys.params =
   * name: 'bucket'
     description: "The bucket name."

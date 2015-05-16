@@ -13,6 +13,8 @@ require! {
   contenttype
 }
 
+is_prod = process.env.NODE_ENV == 'production'
+
 swagger = 
   * swagger: "2.0"
     info:
@@ -24,21 +26,44 @@ swagger =
     basePath: "/"
     paths: {}
 
-swaggerOperation = (path, cmd) ->
-  * operationId: "get#path"
-    tags: [path]
-    summary: cmd.summary
-    description: cmd.description
-    parameters: [p for p in cmd.params when not p['x-private']]
-    responses:
-      default:
-        description: "Invalid request."
-        schema:
-          "$ref": "#/definitions/Error"
-      200:
-        description: "Successful request."
-        schema:
-          "$ref": "#/definitions/Weather"
+swaggerOperation = (commandname, cmd) ->
+  path = "/#commandname"
+  getParams = []
+  postParams = []
+  debugger
+  for param in cmd.params
+    continue if param['x-private']
+    path += "/{#{param.name}}"
+    getParams.push ({} <<<< param) <<< do
+      in: 'path'
+      type: 'string'
+    postParams.push ({} <<<< param) <<< do
+      in: 'formData'
+      type: 'string'
+  operation = 
+    * summary: cmd.summary
+      tags: [cmd.group]
+      description: cmd.description
+      responses:
+        default:
+          description: "Invalid request."
+          schema:
+            "$ref": "#/definitions/Error"
+        200:
+          description: "Successful request."
+
+  getOp = ({} <<<< operation) <<<
+    operationId: "get#commandname"
+  getOp.parameters = getParams if getParams.length > 0
+
+  postOp = ({} <<<< operation) <<<
+    operationId: "post#commandname"
+    parameters: postParams
+  postOp.parameters = postParams if postParams.length > 0
+
+  swagger.paths[path] = 
+    * get: getOp
+      post: postOp
   
 errors = 
   'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
@@ -81,7 +106,7 @@ makeroutes = (server, logger) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
-          if process.env.NODE_ENV != 'production'
+          if not is_prod
             facts['test'] = "env #{process.env.NODE_ENV}"
           params = resolve cm.params, facts
           if params == null
@@ -100,10 +125,8 @@ makeroutes = (server, logger) ->
         for parm in cm.params
           docparams[parm.name] = parm
         server.get "/#commandname#params" handler
-        swagger.paths[commandname] = 
-          * get: swaggerOperation commandname, cm     
-            post: swaggerOperation commandname, cm     
         server.post "/#commandname" handler
+        swaggerOperation commandname, cm
 
 web_proxy = (req, res, next) ->
   res.setHeader 
@@ -119,7 +142,8 @@ web_proxy = (req, res, next) ->
   next!
 
 swaggerJson = (req, res) ->
-  res.send JSON.stringify swagger
+  res.send swagger
+
 #
 # This is because the negotiator module will balk if any media type
 # parameter (except for q) doesn't explicitly match the server's
@@ -138,7 +162,7 @@ cleanAccepts = (req, res, next) ->
 
 export init = (server, logobj) ->
   logger = logobj
-  swagger.host = server.name
+  swagger.host = 'localhost:8080' # server.name
   server.use setHeader
   server.use cleanAccepts
   server.use restify.bodyParser!
@@ -147,12 +171,12 @@ export init = (server, logobj) ->
   server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
-  server.get "/swagger.json" swaggerJson
-
+  server.get "/swagger/resources.json" swaggerJson
+  server.get /^\/docs.*/ restify.serveStatic directory: './swagger'
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
-if process.env.NODE_ENV == 'production'
+if is_prod
   logpath = "#{process.env.HOME}/logs"
   bunyan.defaultStreams :=
     * level: 'error',
@@ -175,14 +199,14 @@ bunyan.getLogger = (name) ->
   else
     bunyan.createLogger name: name
 
-  process.on 'SIGUSR2' ->
-    log.reopenFileStreams!
+  if is_prod
+    process.on 'SIGUSR2' ->
+      log.reopenFileStreams!
 
   log
 
 export standalone = ->
   logger = bunyan.getLogger 'api'
-  is_prod = process.env.NODE_ENV == 'production'
 
   if is_prod
     try

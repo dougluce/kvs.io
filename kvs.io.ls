@@ -4,7 +4,7 @@ require! {
   fs
 }
 
-main = path.join path.dirname(fs.realpathSync __filename), 'lib', 'api.ls'
+main = path.join path.dirname(fs.realpathSync __filename), 'lib', 'api'
 
 require main .standalone!
 
