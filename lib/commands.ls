@@ -79,6 +79,9 @@ export newbucket = (info, ip, test, cb) ->
   <- storeValue "buckets", bucket_name, value
   cb null, bucket_name
 
+newbucket.errors =
+  * 'bucket already exists'
+  ...
 newbucket.group = 'buckets'
 newbucket.params =
   * name: 'info'
@@ -116,6 +119,9 @@ export listkeys = (bucket, cb) ->
       <- confirm_no_error err, values, cb
       listkeys bucket, cb
 
+listkeys.errors =
+  * 'not found'
+  ...
 listkeys.group = 'buckets'
 listkeys.params =
   * name: 'bucket'
@@ -147,6 +153,9 @@ export delbucket = (bucket, cb) ->
   <- confirm_found err, result, cb
   cb null
 
+delbucket.errors =
+  * 'not empty'
+    'not found'
 delbucket.group = 'buckets'
 delbucket.params =
   * name: 'bucket'
@@ -168,6 +177,9 @@ export setkey = (bucket, key, value, cb) ->
     ..setValue value
   cb null
 
+setkey.errors =
+  * 'not found'
+  ...
 setkey.group = 'keys'
 setkey.params =
   * name: 'bucket'
@@ -213,6 +225,9 @@ export getkey = (bucket, keys, cb) ->
       results := results[keylist[0]]
     cb null, results
 
+getkey.errors =
+  * 'not found'
+  ...
 getkey.group = 'keys'
 getkey.params =
   * name: 'bucket'
@@ -240,6 +255,9 @@ export delkey = (bucket, key, cb) ->
   <- confirm_found err, result, cb
   cb null
 
+delkey.errors =
+  * 'not found'
+  ...
 delkey.group = 'keys'
 delkey.params =
   * name: 'bucket'
@@ -271,6 +289,9 @@ export findkeys = (bucket, keyword, cb) ->
       <- confirm_no_error err, values, cb
       findkeys bucket, cb
 
+findkeys.errors =
+  * 'not found'
+  ...
 findkeys.group = 'search'
 findkeys.params =
   * name: 'bucket'

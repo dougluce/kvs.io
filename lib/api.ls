@@ -15,6 +15,17 @@ require! {
 
 is_prod = process.env.NODE_ENV == 'production'
 
+errors = 
+  'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
+  'not found': [restify.NotFoundError, "Entry not found."]
+  'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
+
+handle_error = (err, next, good) ->
+  return next new that.0 that.1 if errors[err]
+  return next new restify.InternalServerError err if err # May leak errors externally
+  good! # If there's no error, continue on!
+  next!
+  
 swagger = 
   * swagger: "2.0"
     info:
@@ -27,10 +38,9 @@ swagger =
     paths: {}
 
 swaggerOperation = (commandname, cmd) ->
-  path = "/#commandname"
+  path = commandname
   getParams = []
   postParams = []
-  debugger
   for param in cmd.params
     continue if param['x-private']
     path += "/{#{param.name}}"
@@ -45,12 +55,15 @@ swaggerOperation = (commandname, cmd) ->
       tags: [cmd.group]
       description: cmd.description
       responses:
-        default:
-          description: "Invalid request."
-          schema:
-            "$ref": "#/definitions/Error"
-        200:
+        "#{cmd.success}":
           description: "Successful request."
+        500:
+          description: "Internal server error."
+
+  for error in cmd.errors
+    operation.responses <<<
+       "#{new errors[error][0]!statusCode}":
+         description: errors[error][1]
 
   getOp = ({} <<<< operation) <<<
     operationId: "get#commandname"
@@ -60,22 +73,15 @@ swaggerOperation = (commandname, cmd) ->
     operationId: "post#commandname"
     parameters: postParams
   postOp.parameters = postParams if postParams.length > 0
-
-  swagger.paths[path] = 
-    * get: getOp
-      post: postOp
   
-errors = 
-  'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
-  'not found': [restify.NotFoundError, "Entry not found."]
-  'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
-  'no such bucket': [restify.NotFoundError, "No such bucket."]
-
-handle_error = (err, next, good) ->
-  return next new that.0 that.1 if errors[err]
-  return next new restify.InternalServerError err if err # May leak errors externally
-  good! # If there's no error, continue on!
-  next!
+  swagger.paths <<<
+    if path == commandname # No params, combine ops
+      "/#path":
+        get: getOp
+        post: postOp
+    else     
+      "/#path": get: getOp
+      "/#commandname": post: postOp
 
 rh = 0
 function setHeader req, res, next
@@ -162,7 +168,10 @@ cleanAccepts = (req, res, next) ->
 
 export init = (server, logobj) ->
   logger = logobj
-  swagger.host = 'localhost:8080' # server.name
+  if is_prod
+    swagger.host = 'kvs.io'
+  else
+    swagger.host = 'localhost:' + server.address().port
   server.use setHeader
   server.use cleanAccepts
   server.use restify.bodyParser!
@@ -234,10 +243,9 @@ export standalone = ->
       sinon
     }
     stub_riak_client sinon
-    
-  init server, logger
 
   <- server.listen if is_prod then 80 else 8080
+  init server, logger
 
   cli.start_upgrader server # Allow upgrades to CLI
   logger.info '%s listening at %s', server.name, server.url

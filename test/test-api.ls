@@ -391,8 +391,9 @@ describe "API" ->
       done!
 
   describe 'swagger' ->
-    specify.only 'should have some swag' (done) ->
-      err, req, res, data <- client.get "/swagger.json"
+    specify 'should have some swag' (done) ->
+      err, req, res, data <- client.get "/swagger/resources.json"
       swagger = JSON.parse data
       expect swagger.swagger, 'swagger' .to.equal "2.0"
+      expect swagger.paths .to.contain.all.keys ['/newbucket' '/delbucket/{bucket}']
       done!

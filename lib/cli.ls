@@ -9,6 +9,8 @@ require! {
 
 logger = null
 
+is_prod = process.env.NODE_ENV == 'production'
+
 shortcuts = 
   '?': 'help'
   new: 'newbucket'
@@ -54,7 +56,7 @@ accept_web_connection = (req, socket, head) ->
       socket._handle.fd
     else
       "unknown FD"
-    if process.env.NODE_ENV != 'production'
+    unless is_prod
       facts['test'] = "env #{process.env.NODE_ENV}"
     logger.info facts, "connect"
     return cli_open socket
@@ -69,7 +71,7 @@ accept_telnet_connection = (socket) ->
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
     fd: fd
-  if process.env.NODE_ENV != 'production'
+  unless is_prod
     facts['test'] = "env #{process.env.NODE_ENV}"
   logger.info facts, "connect"
   cli_open socket
@@ -131,7 +133,7 @@ function define_locals
       required: true
       'x-private': true
 
-  cli_commands.quit.doc = """
+  cli_commands.quit.summary = """
   Quit your session.
   """
   
@@ -139,11 +141,11 @@ function define_locals
     if not command
       w "Commands available:"
       for command of cli_commands
-        if cli_commands[command].doc
+        if cli_commands[command].summary
           w "  #command -- #that"
       return cb!
 
-    if cli_commands[command]?doc
+    if cli_commands[command]?summary
       pstrings = []
       commstring = ""
       for param in cli_commands[command].params
@@ -173,7 +175,7 @@ function define_locals
       description: "Command to get help on"
       required: false
   
-  cli_commands.help.doc = """
+  cli_commands.help.summary = """
   Show help.
   """
 
@@ -282,7 +284,7 @@ function cli_open socket
     do_parse line, rl, socket
 
   # Tell Telnet to not buffer.
-  <- setTimeout _, 200 # To allow for drainage
+  <- setTimeout _, is_prod ? 200 : 50 # To allow for drainage
   buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
   socket.write buf, 'binary'
 
@@ -291,7 +293,7 @@ function cli_open socket
     if data.readUInt8(0) == 255
       got_options := true
   socket.on 'data', option_checker
-  <- setTimeout _, 200 # To allow for option eating
+  <- setTimeout _, is_prod ? 200 : 1 # To allow for option eating
   
   socket.removeListener 'data', option_checker
   rl := readline.createInterface socket, socket, null, got_options
