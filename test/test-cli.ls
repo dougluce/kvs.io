@@ -133,7 +133,7 @@ describe "CLI full commands" ->
       * ''
         '  listkeys bucket'
         ''
-        'List the keys in a bucket.'
+        'List keys in a bucket.'
         '  bucket: The bucket name.'
         ''
         '>'

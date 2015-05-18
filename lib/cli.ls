@@ -284,7 +284,7 @@ function cli_open socket
     do_parse line, rl, socket
 
   # Tell Telnet to not buffer.
-  <- setTimeout _, is_prod ? 200 : 50 # To allow for drainage
+  <- setTimeout _, is_prod ? 200 : 100 # To allow for drainage
   buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
   socket.write buf, 'binary'
 

@@ -29,8 +29,31 @@ handle_error = (err, next, good) ->
 swagger = 
   * swagger: "2.0"
     info:
-      title: "API for kvs.io",
-      description: "An API for using the kvs.io key-value store.",
+      title: "The kvs.io API",
+      description: """
+# A simple, fast, always-available key-value store.
+
+The kvs.io service provides a globally accessible key-value store
+based on secure bucket names and redundant storage of data.
+
+This service lets you store data securely using only browser-based
+HTML without the need for any set-up.
+
+The first principle of kvs.io is simplicity. Parameters may be part of
+the URL for a normal HTTP GET or sent as form data as a POST.  All
+calls may be made via HTTP or HTTPS (although HTTPS is STRONGLY
+recommended!).
+
+The second principle of kvs.io is reliability.  Redundant front-ends
+keep availability high.  On the back end, each key-value pair is
+stored on at least three separate servers.
+
+The third princple of kvs.io is speed.  A single, simple REST
+transaction is all it takes.  Your bucket name is your key to the
+system, and there is no need to go through an authentication
+transaction.  One hit in, one response out.
+
+""",
       version: "0.1"
     consumes: ["text/plain; charset=utf-8", "application/json"]
     produces: ["text/plain; charset=utf-8", "application/json"]
@@ -252,8 +275,15 @@ export standalone = ->
 
   # HTTPS server
   try
-    options['key'] = fs.readFileSync '/etc/ssl/kvs.io.key'
-    options['certificate'] = fs.readFileSync '/etc/ssl/kvs.io.crt'
+#    options <<<
+#      key: fs.readFileSync '/etc/ssl/kvs.io.key'
+#      certificate: fs.readFileSync '/etc/ssl/kvs.io.crt'
+    options <<<
+      spdy:
+        cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
+        key: fs.readFileSync '/etc/ssl/kvs.io.key'
+        ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
+
   if options['key'] and options['certificate']
     secure_server = restify.createServer options
     secure_server.on 'after' restify.auditLogger do

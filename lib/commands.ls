@@ -98,11 +98,33 @@ newbucket.params =
     'x-private': true
 newbucket.success = 201
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
-newbucket.summary = """
-Create a new bucket.
-"""
+newbucket.summary = "Create a new bucket."
 newbucket.description = """
-Create a new bucket.
+# Create a new bucket.
+
+kvs.io works on the basis of buckets.  All keys must be collected into
+buckets.  A bucket's name is a 20-character random string.  This
+string is created via the Yarrow algorithm using 256-bit AES seeded by
+the Intel Secure Key hardware randomness generator.  It is checked
+against all existing bucket names to ensure there are no collisions.
+
+## Security of your bucket
+
+Once created, your new bucket's name is known only to you.  If you use
+only SSL-protected transmission, you can keep the bucket secure
+without the need for a password, API key or other security mechanism.
+
+Keep track of the name of the bucket!  Without it, you will lose
+access to the bucket and all contents within it.
+
+## Limitations
+
+The kvs.io unauthenticated service only allows 5 buckets to be created
+per IP per day.  Authenticated accounts are required in order to get
+around this limit.
+
+See the setkey command for other limitations on kvs.io
+
 """
 
 export listkeys = (bucket, cb) ->
@@ -129,11 +151,14 @@ listkeys.params =
     required: true
   ...
 listkeys.success = 200
-listkeys.summary = """
-List the keys in a bucket.
-"""
+listkeys.summary = "List keys in a bucket."
 listkeys.description = """
-List the keys in a bucket.
+# List keys in a bucket
+
+Given a bucket name, show all the keys that exist in the bucket.
+
+If done via the RESTful interface, this will return a JSON array of
+key names.
 """
 
 listkeys.returnformatter = (w, keys) -> 
@@ -163,11 +188,16 @@ delbucket.params =
     required: true
   ...
 delbucket.success = 204
-delbucket.summary = """
-Delete a bucket.
-"""
+delbucket.summary = "Delete a bucket."
 delbucket.description = """
-Delete a bucket.
+# Delete a bucket
+
+Before deleting a bucket, you must make sure that all keys have been
+removed.  This command will refuse to delete a bucket that is not
+empty.
+
+Once a bucket is deleted, its name and contents are forever lost.  It
+cannot be created under the same name that it previously had.
 """
 
 export setkey = (bucket, key, value, cb) ->
@@ -186,17 +216,29 @@ setkey.params =
     description: "The bucket name."
     required: true
   * name: 'key'
-    description: "The key."
+    description: "The key to set a value for."
     required: true
   * name: 'value'
-    description: "The value."
+    description: "The value for the key."
     required: true
 setkey.success = 201
-setkey.summary = """
-Set the value of a key in a bucket.
-"""
+setkey.summary = "Set the value of a key in a bucket."
 setkey.description = """
-Set the value of a key in a bucket.
+# Set the value of a key in a bucket
+
+This will set a value for the given key.
+
+If the key doesn't exist, it will be created and set to the given
+value. If the key already exists, the old value will be lost.
+
+## Limitations
+
+Key names are restricted to #MAXKEYLENGTH bytes maximum.  Larger key names are
+not rejected, but will be truncated to #MAXKEYLENGTH bytes before setting.
+
+Values are restricted to #MAXVALUELENGTH bytes.  Larger values will
+not be rejected, but will be truncated before storing.
+
 """
 
 export getkey = (bucket, keys, cb) ->
@@ -237,11 +279,12 @@ getkey.params =
     description: "The key."
     required: true
 getkey.success = 200
-getkey.summary = """
-Get the value of a key in a bucket.
-"""
+getkey.summary = "Get the value of a key in a bucket."
 getkey.description = """
-Get the value of a key in a bucket.
+# Get the value of a key in a bucket
+
+This will return the value of a key in a bucket.
+
 """
 
 export delkey = (bucket, key, cb) ->
@@ -267,11 +310,13 @@ delkey.params =
     description: "The key to delete."
     required: true
 delkey.success = 204
-delkey.summary = """
-Delete a key from a bucket.
-"""
+delkey.summary = "Delete a key from a bucket."
 delkey.description = """
-Delete a key from a bucket.
+# Delete a key from a bucket
+
+This removes the key-value pair referenced by the given key, and is
+not reversible.  If you delete a key-value pair, it is gone forever.
+
 """
 
 export findkeys = (bucket, keyword, cb) ->
@@ -301,11 +346,12 @@ findkeys.params =
     description: "A substring to search for."
     required: true
 findkeys.success = 200
-findkeys.summary = """
-Find keys in a bucket that contain a given substring.
-"""
+findkeys.summary = "Find keys in a bucket that contain a given substring."
 findkeys.description = """
-Find keys in a bucket that contain a given substring.
+# Find keys in a bucket that contain a given substring
+
+This searches through the existing key names in your bucket and
+returns the names that match.  It does NOT search through key values.
 """
 
 findkeys.returnformatter = (w, keys) -> 
