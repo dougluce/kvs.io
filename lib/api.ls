@@ -68,7 +68,7 @@ swaggerOperation = (commandname, cmd) ->
     continue if param['x-private']
     path += "/{#{param.name}}"
     getParams.push ({} <<<< param) <<< do
-      in: 'path'
+      in: 'query'
       type: 'string'
     postParams.push ({} <<<< param) <<< do
       in: 'formData'
@@ -119,9 +119,19 @@ resolve = (params, facts) ->
   for param in params
     if facts[param['name']]
       newparams.push facts[param['name']]
+    else
+      unless param['required']
+        newparams.push null
   if newparams.length != params.length
     return null
   return newparams
+
+# exported for testing purposes.
+export additional_facts = ->
+  facts = {}
+  if not is_prod
+    facts['test'] = "env #{process.env.NODE_ENV}"
+  facts
 
 makeroutes = (server, logger) ->
   for commandname, command of commands
@@ -135,8 +145,7 @@ makeroutes = (server, logger) ->
           facts = req.params with 
             info: req.headers
             ip: ipware!get_ip req
-          if not is_prod
-            facts['test'] = "env #{process.env.NODE_ENV}"
+          facts <<< exports.additional_facts!
           params = resolve cm.params, facts
           if params == null
             return res.send 400, "params incorrect"
@@ -296,3 +305,6 @@ export standalone = ->
 if !module.parent # Run stand-alone
   standalone!
 
+unless process.env.NODE_ENV?
+  process.stderr.write "NODE_ENV needs to be set\n"
+  process.exit 1

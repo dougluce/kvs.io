@@ -74,6 +74,14 @@ describe "API" ->
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
       done!
+
+    specify 'non-test bucket should also work' sinon.test (done) ->
+      @stub api, 'additional_facts', -> {}
+      err, req, res, data <- client.get '/newbucket'
+      check_err err, res, 'scab' 201
+      expect data .to.match /^[0-9a-zA-Z]{20}$/
+      <- utils.deleteall data # not marked as test! gotta remove this specifically.
+      done!
   
   describe '/setkey' ->
     bucket = ""
