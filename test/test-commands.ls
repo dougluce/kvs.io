@@ -262,7 +262,7 @@ describe "Commands" ->
     specify 'should list keys' (done) ->
       err, values <- commands.listkeys bucket, null
       expect err, 'slk' .to.be.null
-      expect values .to.eql do
+      expect values .to.have.members do
         * "testbucketinfo"
           "woohoo"
           "werp",
