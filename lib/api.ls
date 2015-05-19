@@ -34,24 +34,25 @@ swagger =
 # A simple, fast, always-available key-value store.
 
 The kvs.io service provides a globally accessible key-value store
-based on secure bucket names and redundant storage of data.
+organized into buckets and stored redundantly.
 
 This service lets you store data securely using only browser-based
-HTML without the need for any set-up.
+HTML without the need for any complex set-up.
 
-The first principle of kvs.io is simplicity. Parameters may be part of
-the URL for a normal HTTP GET or sent as form data as a POST.  All
-calls may be made via HTTP or HTTPS (although HTTPS is STRONGLY
-recommended!).
+The first principle of kvs.io is simplicity. The regular API gives you
+all the semantic power of REST. The simple API lets you stuff
+parameters into the URL for a normal HTTP GET or send them as form
+data with a POST.  All calls may be made via HTTP or HTTPS (use of
+HTTPS is STRONGLY recommended).
 
 The second principle of kvs.io is reliability.  Redundant front-ends
-keep availability high.  On the back end, each key-value pair is
-stored on at least three separate servers.
+keep availability high.  Each key-value pair is stored on at least
+three separate back-end servers.
 
 The third princple of kvs.io is speed.  A single, simple REST
 transaction is all it takes.  Your bucket name is your key to the
 system, and there is no need to go through an authentication
-transaction.  One hit in, one response out.
+transaction.  One hit in, one response out.  SPDY is supported.
 
 """,
       version: "0.1"
@@ -66,7 +67,6 @@ transaction.  One hit in, one response out.
 # Encompasses both REST and simple forms.
 #
 # Simple form is all URL based
-
 
 swaggerOperation = (commandname, cmd) ->
   path = commandname
@@ -137,47 +137,47 @@ resolve = (params, facts) ->
 # exported for testing purposes.
 export additional_facts = ->
   facts = {}
-  if not is_prod
+  unless is_prod
     facts['test'] = "env #{process.env.NODE_ENV}"
   facts
 
 makeroutes = (server, logger) ->
-  for commandname, command of commands
-    if command.params
-      let name = commandname, cm = command
-        handler = (req, res, next) ->
-          params = {} <<<< req.params
-          if cm.mapparams
-            for key in Object.keys cm.mapparams
-              if params[key]
-                params[cm.mapparams[key]] = params[key]
-                delete params[key]
-          facts = params with 
-            info: req.headers
-            ip: ipware!get_ip req
-          facts <<< exports.additional_facts!
-          params = resolve cm.params, facts
-          if params == null
-            return res.send 400, "params incorrect"
-          params.push (err, result) ->
-            <- handle_error err, next
-            res.send cm.success, result
-            params.pop!
-            logger.info params, "api: name"
-          cm.apply commands, params
+  for let commandname, command of commands when command.params
+    # The route handler.
+    handler = (req, res, next) ->
+      params = {} <<<< req.params
+      if command.mapparams
+        for key in Object.keys command.mapparams
+          if params[key]
+            params[command.mapparams[key]] = params[key]
+            delete params[key]
+      facts = params with 
+        info: req.headers
+        ip: ipware!get_ip req
+      facts <<< exports.additional_facts!
+      params = resolve command.params, facts
+      unless params
+        return res.send 400, "params incorrect"
+      # The callback.
+      params.push (err, result) ->
+        <- handle_error err, next
+        res.send command.success, result
+        params.pop! # Remove callback for reporting.
+        logger.info params, "api: name"
+      command.apply commands, params
 
-        # Simple form.
-        getUrl = "/#commandname"
-        for param in command.params
-          continue if param['x-private']
-          unless param['required']
-            server.get getUrl, handler
-          getUrl += "/:#{param.name}"
+    # Simple form.
+    getUrl = "/#commandname"
+    for param in command.params
+      continue if param['x-private']
+      unless param['required']
         server.get getUrl, handler
-        server.post "/#commandname" handler
+      getUrl += "/:#{param.name}"
+    server.get getUrl, handler
+    server.post "/#commandname" handler
 
-        server[cm.rest[0]] cm.rest[1], handler if cm.rest
-        swaggerOperation commandname, cm
+    server[command.rest[0]] command.rest[1], handler if command.rest
+    swaggerOperation commandname, command
 
 web_proxy = (req, res, next) ->
   res.setHeader 
@@ -191,9 +191,6 @@ web_proxy = (req, res, next) ->
     options.headers['referer'] = req.headers['referer']
   request.get options .pipe res
   next!
-
-swaggerJson = (req, res) ->
-  res.send swagger
 
 #
 # This is because the negotiator module will balk if any media type
@@ -213,20 +210,21 @@ cleanAccepts = (req, res, next) ->
 
 export init = (server, logobj) ->
   logger = logobj
-  if is_prod
-    swagger.host = 'kvs.io'
-  else
-    swagger.host = 'localhost:' + server.address().port
   server.use setHeader
   server.use cleanAccepts
   server.use restify.bodyParser!
   server.use restify.queryParser!
   server.use restify.acceptParser server.acceptable
   server.use restify.CORS!
-  server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
   commands.init!
   makeroutes server, logger
-  server.get "/swagger/resources.json" swaggerJson
+  server.get /^(|\/|\/index.html|\/favicon.ico|\/w.*)$/ web_proxy
+  host = 'kvs.io'
+  unless is_prod
+    if server.address!?port
+      host = 'localhost:' + that
+  server.get "/swagger/resources.json" (req, res) ->
+    res.send swagger <<< host: host
   server.get /^\/docs.*/ restify.serveStatic directory: './swagger'
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
@@ -297,17 +295,13 @@ export standalone = ->
   logger.info '%s listening at %s', server.name, server.url
 
   # HTTPS server
-  try
-#    options <<<
-#      key: fs.readFileSync '/etc/ssl/kvs.io.key'
-#      certificate: fs.readFileSync '/etc/ssl/kvs.io.crt'
-    options <<<
-      spdy:
-        cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
-        key: fs.readFileSync '/etc/ssl/kvs.io.key'
-        ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
+  options <<<
+    spdy:
+      cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
+      key: fs.readFileSync '/etc/ssl/kvs.io.key'
+      ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
 
-  if options['key'] and options['certificate']
+  if options['spdy']
     secure_server = restify.createServer options
     secure_server.on 'after' restify.auditLogger do
       * log: bunyan.getLogger 'api'
