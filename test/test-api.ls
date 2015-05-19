@@ -54,6 +54,12 @@ describe "API" ->
       expect data .to.match /^[0-9a-zA-Z]{20}$/
       done!
   
+    specify 'POST / should also create a bucket' (done) ->
+      err, req, res, data <- client.post '/'
+      check_err err, res, 'sacab' 201
+      expect data .to.match /^[0-9a-zA-Z]{20}$/
+      done!
+  
     specify 'crypto error on bucket creation' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb "Crypto error"
@@ -93,6 +99,12 @@ describe "API" ->
   
     specify 'should set a key' (done) ->
       err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahharf"
+      check_err err, res, "api.setkey #bucket #err", 201 
+      expect data, "setkey data" .to.be.empty
+      done!
+      
+    specify 'PUT /:bucket/:key should also set a key' (done) ->
+      err, req, res, data <- client.put "/#{bucket}/wazoo?value=zoowahharf"
       check_err err, res, "api.setkey #bucket #err", 201 
       expect data, "setkey data" .to.be.empty
       done!
@@ -166,6 +178,12 @@ describe "API" ->
       check_err err, res, 'sgak', 200
       done!
   
+    specify 'GET /:bucket/:key should alsoget a key' (done) ->
+      err, req, res, data <- client.get "/#{bucket}/wazoo"
+      expect data .to.equal "zoowahhhh"
+      check_err err, res, 'sagak', 200
+      done!
+  
     specify 'should fail on bad bucket' (done) ->
       err, req, res, data <-client.get "/getkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/mykey"
       expect data .to.equal err.message .to.equal 'Entry not found.'
@@ -182,7 +200,7 @@ describe "API" ->
   describe '/delkey' ->
     bucket = ""
   
-    before (done) ->
+    beforeEach (done) ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
       api_setkey bucket, done
@@ -195,6 +213,17 @@ describe "API" ->
       err, req, res, data <- client.get "/getkey/#{bucket}/wazoo"
       expect data .to.equal 'Entry not found.'
       expect err.message .to.equal 'Entry not found.'
+      expect res.statusCode .to.equal 404
+      done!
+  
+    specify 'DEL /:bucket/:key should also delete a key' (done) ->
+      err, req, res, data <- client.del "/#{bucket}/wazoo"
+      expect data, "should also delete a key" .to.equal ""
+      check_err err, res, 'sadak', 204
+      # Make sure it's gone.
+      err, req, res, data <- client.get "/#{bucket}/wazoo"
+      expect data, 'sadak2' .to.equal 'Entry not found.'
+      expect err.message, 'sadak3' .to.equal 'Entry not found.'
       expect res.statusCode .to.equal 404
       done!
   
@@ -260,6 +289,14 @@ describe "API" ->
       expect objs .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
       done!
   
+    specify 'GET /:bucket should also list keys' (done) ->
+      err, req, res, data <- client.get "/#{bucket}"
+      check_err err, res, 'gbsalk', 200
+      expect res.statusCode .to.equal 200
+      objs = JSON.parse data
+      expect objs .to.have.members ["testbucketinfo", "wazoo", "werp", "woohoo", "StaggeringlyLessEfficient", "EatingItStraightOutOfTheBag", "#{basekey}W", basekey]
+      done!
+  
     specify 'should list JSON keys' (done) ->
       err, req, res, data <- json_client.get "/listkeys/#{bucket}"
       check_err err, res, 'sljk', 200
@@ -282,6 +319,15 @@ describe "API" ->
       err, req, res, data <- client.get "/delbucket/#{bucket}"
       expect data, "should delete bucket 2" .to.be.empty
       check_err err, res, 'sdtb2', 204
+      done!
+  
+    specify 'DEL /:bucket should also delete the bucket' (done) ->
+      err, req, res, data <- client.del "/#{bucket}/someDamnedThing"
+      expect data, "should delete bucket" .to.be.empty
+      check_err err, res, 'sadtb', 204
+      err, req, res, data <- client.del "/#{bucket}"
+      expect data, "should delete bucket 2" .to.be.empty
+      check_err err, res, 'sadtb2', 204
       done!
   
     specify 'should fail on unknown bucket' (done) ->

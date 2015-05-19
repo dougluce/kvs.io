@@ -79,9 +79,6 @@ export newbucket = (info, ip, test, cb) ->
   <- storeValue "buckets", bucket_name, value
   cb null, bucket_name
 
-newbucket.errors =
-  * 'bucket already exists'
-  ...
 newbucket.group = 'buckets'
 newbucket.params =
   * name: 'info'
@@ -96,7 +93,11 @@ newbucket.params =
     description: "Marks this as a test bucket"
     required: false
     'x-private': true
+newbucket.rest = ['post' '/']
 newbucket.success = 201
+newbucket.errors =
+  * 'bucket already exists'
+  ...
 newbucket.returnformatter = (w, bucket) -> w "Your new bucket is #bucket"
 newbucket.summary = "Create a new bucket."
 newbucket.description = """
@@ -141,16 +142,18 @@ export listkeys = (bucket, cb) ->
       <- confirm_no_error err, values, cb
       listkeys bucket, cb
 
-listkeys.errors =
-  * 'not found'
-  ...
 listkeys.group = 'buckets'
 listkeys.params =
   * name: 'bucket'
     description: "The bucket name."
     required: true
   ...
+listkeys.rest = ['get', /^\/([^\/]{20})$/]
+listkeys.mapparams = { '0': 'bucket' }
 listkeys.success = 200
+listkeys.errors =
+  * 'not found'
+  ...
 listkeys.summary = "List keys in a bucket."
 listkeys.description = """
 # List keys in a bucket
@@ -178,16 +181,17 @@ export delbucket = (bucket, cb) ->
   <- confirm_found err, result, cb
   cb null
 
-delbucket.errors =
-  * 'not empty'
-    'not found'
 delbucket.group = 'buckets'
 delbucket.params =
   * name: 'bucket'
     description: "The bucket to delete."
     required: true
   ...
+delbucket.rest = ['del', '/:bucket']
 delbucket.success = 204
+delbucket.errors =
+  * 'not empty'
+    'not found'
 delbucket.summary = "Delete a bucket."
 delbucket.description = """
 # Delete a bucket
@@ -222,6 +226,7 @@ setkey.params =
     description: "The value for the key."
     required: true
 setkey.success = 201
+setkey.rest = ['put', '/:bucket/:key']
 setkey.summary = "Set the value of a key in a bucket."
 setkey.description = """
 # Set the value of a key in a bucket
@@ -267,9 +272,6 @@ export getkey = (bucket, keys, cb) ->
       results := results[keylist[0]]
     cb null, results
 
-getkey.errors =
-  * 'not found'
-  ...
 getkey.group = 'keys'
 getkey.params =
   * name: 'bucket'
@@ -278,7 +280,12 @@ getkey.params =
   * name: 'key'
     description: "The key."
     required: true
+getkey.rest = ['get', /^\/([^\/]{20})\/([^\/]+)$/]
+getkey.mapparams = {'0': 'bucket', '1': 'key'}
 getkey.success = 200
+getkey.errors =
+  * 'not found'
+  ...
 getkey.summary = "Get the value of a key in a bucket."
 getkey.description = """
 # Get the value of a key in a bucket
@@ -298,9 +305,6 @@ export delkey = (bucket, key, cb) ->
   <- confirm_found err, result, cb
   cb null
 
-delkey.errors =
-  * 'not found'
-  ...
 delkey.group = 'keys'
 delkey.params =
   * name: 'bucket'
@@ -309,7 +313,11 @@ delkey.params =
   * name: 'key'
     description: "The key to delete."
     required: true
+delkey.rest = ['del', '/:bucket/:key']
 delkey.success = 204
+delkey.errors =
+  * 'not found'
+  ...
 delkey.summary = "Delete a key from a bucket."
 delkey.description = """
 # Delete a key from a bucket

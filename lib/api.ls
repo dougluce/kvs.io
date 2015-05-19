@@ -142,7 +142,13 @@ makeroutes = (server, logger) ->
         httpparams ++= param['name']
       let name = commandname, ht = httpparams, cm = command
         handler = (req, res, next) ->
-          facts = req.params with 
+          params = {} <<<< req.params
+          if cm.mapparams
+            for key in Object.keys cm.mapparams
+              if params[key]
+                params[cm.mapparams[key]] = params[key]
+                delete params[key]
+          facts = params with 
             info: req.headers
             ip: ipware!get_ip req
           facts <<< exports.additional_facts!
@@ -164,6 +170,8 @@ makeroutes = (server, logger) ->
           docparams[parm.name] = parm
         server.get "/#commandname#params" handler
         server.post "/#commandname" handler
+        if cm.rest
+          server[cm.rest[0]] cm.rest[1], handler
         swaggerOperation commandname, cm
 
 web_proxy = (req, res, next) ->
@@ -207,6 +215,7 @@ export init = (server, logobj) ->
   server.use setHeader
   server.use cleanAccepts
   server.use restify.bodyParser!
+  server.use restify.queryParser!
   server.use restify.acceptParser server.acceptable
   server.use restify.CORS!
   server.get /^(|\/|\/index.html|\/w.*)$/ web_proxy
