@@ -70,20 +70,25 @@ transaction.  One hit in, one response out.  SPDY is supported.
 
 swaggerOperation = (commandname, cmd) ->
   path = commandname
+  restPath = []
   getParams = []
   postParams = []
+  restParams = []
   for param in cmd.params
     continue if param['x-private']
     path += "/{#{param.name}}"
+    restPath.push "{#{param.name}}" if param.required and param.in != 'body'
     getParams.push ({} <<<< param) <<< do
       in: 'query'
       type: 'string'
     postParams.push ({} <<<< param) <<< do
       in: 'formData'
       type: 'string'
+    restParams.push ({} <<<< param) <<< do
+      in: if param.in then param.in else if param.required then 'path' else 'query'
+      type: 'string'
   operation = 
     * summary: cmd.summary
-      tags: [cmd.group]
       description: cmd.description
       responses:
         "#{cmd.success}":
@@ -97,22 +102,27 @@ swaggerOperation = (commandname, cmd) ->
          description: errors[error][1]
 
   getOp = ({} <<<< operation) <<<
+    tags: [cmd.group, \simple]
     operationId: "get#commandname"
   getOp.parameters = getParams if getParams.length > 0
 
   postOp = ({} <<<< operation) <<<
+    tags: [cmd.group, \simple]
     operationId: "post#commandname"
-    parameters: postParams
   postOp.parameters = postParams if postParams.length > 0
-  
-  swagger.paths <<<
-    if path == commandname # No params, combine ops
-      "/#path":
-        get: getOp
-        post: postOp
-    else     
-      "/#path": get: getOp
-      "/#commandname": post: postOp
+
+  swagger.paths.{}"/#path".get = getOp
+  swagger.paths.{}"/#commandname".post = postOp
+
+  if cmd.rest
+    restOp = ({} <<<< operation) <<<
+      tags: [cmd.group, \rest]
+      operationId: "rest#commandname"
+    restOp.parameters = restParams if restParams.length > 0
+    restPath = '/' + restPath.join '/'
+    method = cmd.rest[0]
+    method = 'delete' if method == 'del'
+    swagger.paths.{}"#restPath".[method] = restOp
 
 rh = 0
 function setHeader req, res, next
@@ -122,14 +132,15 @@ function setHeader req, res, next
 #
 # Fill in the facts if I have them.
 #
-resolve = (params, facts) ->
+resolve = (req, params, facts) ->
   newparams = []
   for param in params
-    if facts[param['name']]
-      newparams.push facts[param['name']]
-    else
-      unless param['required']
-        newparams.push null
+    if facts[param.name]
+      newparams.push facts[param.name]
+    else if param.in == 'body'
+      newparams.push req.body
+    else unless param.required
+      newparams.push null
   if newparams.length != params.length
     return null
   return newparams
@@ -155,7 +166,7 @@ makeroutes = (server, logger) ->
         info: req.headers
         ip: ipware!get_ip req
       facts <<< exports.additional_facts!
-      params = resolve command.params, facts
+      params = resolve req, command.params, facts
       unless params
         return res.send 400, "params incorrect"
       # The callback.
@@ -176,7 +187,7 @@ makeroutes = (server, logger) ->
     server.get getUrl, handler
     server.post "/#commandname" handler
 
-    server[command.rest[0]] command.rest[1], handler if command.rest
+    server[that[0]] that[1], handler if command.rest
     swaggerOperation commandname, command
 
 web_proxy = (req, res, next) ->

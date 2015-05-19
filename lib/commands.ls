@@ -211,6 +211,7 @@ Once a bucket is deleted, its name and contents are forever lost.  It
 cannot be created under the same name that it previously had.
 """
 
+# Gonna make a "newkey" also.
 export setkey = (bucket, key, value, cb) ->
   <- confirm_exists bucket, cb
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
@@ -232,6 +233,7 @@ setkey.params =
   * name: 'value'
     description: "The value for the key."
     required: true
+    in: 'body'
 setkey.success = 201
 setkey.rest = ['put', '/:bucket/:key']
 setkey.summary = "Set the value of a key in a bucket."
