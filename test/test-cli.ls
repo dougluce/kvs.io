@@ -128,13 +128,14 @@ describe "CLI full commands" ->
     done!
 
   specify 'help listkeys should give me help on listkeys' (done) ->
-    data <- d.send 'help listkeys', 7
+    data <- d.send 'help listkeys', 8
     expect data, 'hlsgmhol' .to.eql do
       * ''
-        '  listkeys bucket'
+        '  listkeys bucket [keycontains]'
         ''
         'List keys in a bucket.'
         '  bucket: The bucket name.'
+        '  keycontains: A substring to search for.'
         ''
         '>'
     done!

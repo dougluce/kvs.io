@@ -60,6 +60,14 @@ transaction.  One hit in, one response out.
     basePath: "/"
     paths: {}
 
+
+# Template for a single operation.
+#
+# Encompasses both REST and simple forms.
+#
+# Simple form is all URL based
+
+
 swaggerOperation = (commandname, cmd) ->
   path = commandname
   getParams = []
@@ -136,11 +144,7 @@ export additional_facts = ->
 makeroutes = (server, logger) ->
   for commandname, command of commands
     if command.params
-      httpparams = []
-      for param in command.params
-        continue if param['x-private']
-        httpparams ++= param['name']
-      let name = commandname, ht = httpparams, cm = command
+      let name = commandname, cm = command
         handler = (req, res, next) ->
           params = {} <<<< req.params
           if cm.mapparams
@@ -162,16 +166,17 @@ makeroutes = (server, logger) ->
             logger.info params, "api: name"
           cm.apply commands, params
 
-        params = ht.map( (x) -> \: + x ).join '/'
-        params := '/' + params if params
-
-        docparams = {}
-        for parm in cm.params
-          docparams[parm.name] = parm
-        server.get "/#commandname#params" handler
+        # Simple form.
+        getUrl = "/#commandname"
+        for param in command.params
+          continue if param['x-private']
+          unless param['required']
+            server.get getUrl, handler
+          getUrl += "/:#{param.name}"
+        server.get getUrl, handler
         server.post "/#commandname" handler
-        if cm.rest
-          server[cm.rest[0]] cm.rest[1], handler
+
+        server[cm.rest[0]] cm.rest[1], handler if cm.rest
         swaggerOperation commandname, cm
 
 web_proxy = (req, res, next) ->

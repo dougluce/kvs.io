@@ -128,8 +128,9 @@ See the setkey command for other limitations on kvs.io
 
 """
 
-export listkeys = (bucket, cb) ->
+export listkeys = (bucket, keycontains, cb) ->
   <- confirm_exists bucket, cb
+  keycontains .= toLowerCase! if keycontains
   riak_client.secondaryIndexQuery do
     * bucket: bucket
       indexName: '$bucket'
@@ -138,30 +139,36 @@ export listkeys = (bucket, cb) ->
     (err, result) ->
       values = null
       if result.values
-        values := [..objectKey for result.values]
+        if keycontains
+          values := [..objectKey for result.values when ..objectKey.toLowerCase!indexOf(keycontains) != -1]
+        else
+          values := [..objectKey for result.values]
       <- confirm_no_error err, values, cb
-      listkeys bucket, cb
+      listkeys bucket, keycontains, cb
 
 listkeys.group = 'buckets'
 listkeys.params =
   * name: 'bucket'
     description: "The bucket name."
     required: true
-  ...
+  * name: 'keycontains'
+    description: "A substring to search for."
+    required: false
 listkeys.rest = ['get', /^\/([^\/]{20})$/]
-listkeys.mapparams = { '0': 'bucket' }
+listkeys.mapparams = { '0': 'bucket', '1': 'keycontains' }
 listkeys.success = 200
 listkeys.errors =
   * 'not found'
   ...
 listkeys.summary = "List keys in a bucket."
 listkeys.description = """
-# List keys in a bucket
+# Find keys in a bucket
 
-Given a bucket name, show all the keys that exist in the bucket.
+Given a bucket name, show the keys that exist in the bucket.
 
-If done via the RESTful interface, this will return a JSON array of
-key names.
+If the optional keycontains parameter is given, only those keys that
+contain the string given by it are shown.
+
 """
 
 listkeys.returnformatter = (w, keys) -> 
@@ -172,7 +179,7 @@ listkeys.returnformatter = (w, keys) ->
 export delbucket = (bucket, cb) ->
   <- confirm_exists bucket, cb
   # Is there anything in the bucket?
-  err, values <- listkeys bucket
+  err, values <- listkeys bucket, null
   return cb 'not empty' if values.length > 0
   # Nope, delete it.
   err, result <- riak_client.deleteValue do
@@ -326,43 +333,3 @@ This removes the key-value pair referenced by the given key, and is
 not reversible.  If you delete a key-value pair, it is gone forever.
 
 """
-
-export findkeys = (bucket, keyword, cb) ->
-  <- confirm_exists bucket, cb
-  keyword .= toLowerCase!
-  riak_client.secondaryIndexQuery do
-    * bucket: bucket
-      indexName: '$bucket'
-      indexKey: '_'
-      stream: false
-    (err, result) ->
-      values = null
-      if result.values
-        values := [..objectKey for result.values when ..objectKey.toLowerCase!indexOf(keyword) != -1]
-      <- confirm_no_error err, values, cb
-      findkeys bucket, cb
-
-findkeys.errors =
-  * 'not found'
-  ...
-findkeys.group = 'search'
-findkeys.params =
-  * name: 'bucket'
-    description: "The bucket name."
-    required: true
-  * name: 'keyword'
-    description: "A substring to search for."
-    required: true
-findkeys.success = 200
-findkeys.summary = "Find keys in a bucket that contain a given substring."
-findkeys.description = """
-# Find keys in a bucket that contain a given substring
-
-This searches through the existing key names in your bucket and
-returns the names that match.  It does NOT search through key values.
-"""
-
-findkeys.returnformatter = (w, keys) -> 
-  w "Found keys in bucket:"
-  for key in keys
-    w key
