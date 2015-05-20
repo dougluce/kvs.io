@@ -10,18 +10,12 @@ MAXVALUELENGTH = 65536
 
 riak_client = null # Here to allow stubbing by tests.
 
-#
-# Retry Riak connection if it errors.
-# Need to augment to not reconnect in certain instances.
-#
-confirm_no_error = (err, result, next, cb) ->
-  if err != null
-    do 
-      <- setTimeout _, 200
-      init!
-      cb!
-    return
-  next err, result
+randomString = (cb) ->
+  ex, buf <- crypto.randomBytes 15
+  return cb ex if ex
+  # URL- and hostname-safe strings.
+  bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
+  cb null, bucket_name
 
 export fetchValue = (bucket, key, next) ->
   key .= substr 0, MAXKEYLENGTH
@@ -47,6 +41,19 @@ export storeValue = (bucket, key, value, next) ->
       <- confirm_no_error err, result, next
       storeValue bucket, key, value, next
 
+#
+# Retry Riak connection if it errors.
+# Need to augment to not reconnect in certain instances.
+#
+confirm_no_error = (err, result, next, cb) ->
+  if err != null
+    do 
+      <- setTimeout _, 200
+      init!
+      cb!
+    return
+  next err, result
+
 confirm_exists = (bucket, cb, rest) ->
   err, result <- fetchValue 'buckets' bucket
   return cb err if err
@@ -62,10 +69,8 @@ export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
 export newbucket = (info, ip, test, cb) ->
-  ex, buf <- crypto.randomBytes 15
+  ex, bucket_name <- randomString
   return cb ex if ex
-  # URL- and hostname-safe strings.
-  bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
   # Does this bucket exist?
   err, result <- fetchValue 'buckets' bucket_name
   return cb err if err
