@@ -224,6 +224,32 @@ function define_locals
       required: true
     ...
 
+  #
+  # For testing
+  #
+  cli_commands.sleep = (socket, duration, cb) ->
+     if !isNaN duration && 
+        parseInt Number duration == duration && 
+        !isNaN parseInt duration, 10
+        <- setTimeout _, duration * 1000
+        cb!
+     else
+       socket.write "Bad syntax"
+       cb!
+
+  cli_commands.sleep.params =
+    * name: 'socket'
+      description: "Write socket"
+      'x-private': true
+      required: true
+    * name: 'duration'
+      description: "Duration of sleep, in seconds."
+      required: true
+
+  cli_commands.sleep.summary = """
+  Sleep for the given number of seconds.
+  """
+
 #
 # Fill in the facts if I have them.
 #
@@ -239,7 +265,7 @@ pre_resolve = (params) ->
 # Parse a line of input for a command
 #
 
-do_parse = (line, rl, socket) ->
+do_parse = (line, rl, socket, cb) ->
   logger.info {fd: socket._handle?fd}, "cli: #line"
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
   facts["w"] = w
@@ -272,6 +298,7 @@ do_parse = (line, rl, socket) ->
         else
           w result
       rl.prompt!
+      cb!
     cmd.apply cli_commands, pp
   else
     w "That command is unknown."
@@ -281,7 +308,9 @@ function cli_open socket
   rl = null
   # Main CLI command processor
   cli = (line) ->
-    do_parse line, rl, socket
+    rl.pause!
+    <- do_parse line, rl, socket
+    rl.resume!
 
   # Tell Telnet to not buffer.
   <- setTimeout _, is_prod ? 200 : 100 # To allow for drainage
