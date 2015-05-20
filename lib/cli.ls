@@ -53,7 +53,7 @@ accept_web_connection = (req, socket, head) ->
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
       ip: req.connection.remoteAddress
     facts['fd'] = if socket._handle
-      socket._handle.fd
+      socket._handle?fd
     else
       "unknown FD"
     unless is_prod
@@ -64,9 +64,7 @@ accept_web_connection = (req, socket, head) ->
 
 accept_telnet_connection = (socket) ->
   socket.setNoDelay!
-  fd = socket._handle.fd
-  socket.on 'end' ->
-    logger.info {fd: fd}, "lost connection"
+  fd = socket._handle?fd
   facts :=
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
@@ -306,6 +304,16 @@ do_parse = (line, rl, socket, cb) ->
   
 function cli_open socket
   rl = null
+  fd = socket._handle?fd
+
+  socket.on 'end' ->
+    logger.info {fd: fd}, "lost connection (end)"
+    socket.destroy!
+  socket.on 'close' ->
+    logger.info {fd: fd}, "lost connection (close)"
+  socket.on 'error' ->
+    logger.info {fd: fd}, "connection error"
+
   # Main CLI command processor
   cli = (line) ->
     rl.pause!
