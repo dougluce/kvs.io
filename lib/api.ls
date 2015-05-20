@@ -102,12 +102,12 @@ swaggerOperation = (commandname, cmd) ->
          description: errors[error][1]
 
   getOp = ({} <<<< operation) <<<
-    tags: [cmd.group, \simple]
+    tags: ["simple:#{cmd.group}"]
     operationId: "get#commandname"
   getOp.parameters = getParams if getParams.length > 0
 
   postOp = ({} <<<< operation) <<<
-    tags: [cmd.group, \simple]
+    tags: ["simple:#{cmd.group}"]
     operationId: "post#commandname"
   postOp.parameters = postParams if postParams.length > 0
 
@@ -116,7 +116,7 @@ swaggerOperation = (commandname, cmd) ->
 
   if cmd.rest
     restOp = ({} <<<< operation) <<<
-      tags: [cmd.group, \rest]
+      tags: ["rest:#{cmd.group}"]
       operationId: "rest#commandname"
     restOp.parameters = restParams if restParams.length > 0
     restPath = '/' + restPath.join '/'
@@ -311,6 +311,8 @@ export standalone = ->
       cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
       key: fs.readFileSync '/etc/ssl/kvs.io.key'
       ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
+      ciphers: 'ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:AES128-GCM-SHA256:HIGH:!MD5:!aNULL'
+      honorCipherOrder: true
 
   if options['spdy']
     secure_server = restify.createServer options
