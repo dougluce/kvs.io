@@ -40,11 +40,12 @@ describe "CLI alone" ->
     done!
 
   specify 'help should give me help' (done) ->
-    data <- d.send 'help', 4
+    data <- d.send 'help', 5
     expect data, 'hsgmh' .to.eql do
       * 'Commands available:'
         '  quit -- Quit your session.'
         '  help -- Show help.'
+        '  sleep -- Sleep for the given number of seconds.'
         '>'
     done!
     
