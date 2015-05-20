@@ -240,7 +240,7 @@ pre_resolve = (params) ->
 #
 
 do_parse = (line, rl, socket) ->
-  logger.info {fd: socket._handle.fd}, "cli: #line"
+  logger.info {fd: socket._handle?fd}, "cli: #line"
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
   facts["w"] = w
   facts["socket"] = socket

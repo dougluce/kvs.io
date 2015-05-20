@@ -14,6 +14,8 @@ require! {
   path
 }
 
+logger = null
+
 is_prod = process.env.NODE_ENV == 'production'
 
 errors = 
@@ -153,7 +155,7 @@ export additional_facts = ->
     facts['test'] = "env #{process.env.NODE_ENV}"
   facts
 
-makeroutes = (server, logger) ->
+makeroutes = (server) ->
   for let commandname, command of commands when command.params
     # The route handler.
     handler = (req, res, next) ->
@@ -221,7 +223,7 @@ cleanAccepts = (req, res, next) ->
     next!
 
 export init = (server, logobj) ->
-  logger = logobj
+  logger ?:= logobj
   server.use setHeader
   server.use cleanAccepts
   server.use restify.bodyParser!
@@ -229,7 +231,7 @@ export init = (server, logobj) ->
   server.use restify.acceptParser server.acceptable
   server.use restify.CORS!
   commands.init!
-  makeroutes server, logger
+  makeroutes server
   server.get /^(|\/|\/index.html|\/favicon.ico|\/w.*)$/ web_proxy
   host = 'kvs.io'
   unless is_prod
@@ -273,8 +275,6 @@ bunyan.getLogger = (name) ->
   log
 
 export standalone = ->
-  logger = bunyan.getLogger 'api'
-
   if is_prod
     try
       pid = npid.create '/var/run/kvsio/kvsio.pid', true # Force pid creation
@@ -283,16 +283,7 @@ export standalone = ->
       console.log err
       process.exit 1
 
-  cli.init! # Fire up the CLI system.
-  cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
-
-  options =
-    name: 'kvs.io'
-    log: logger
-
-  server = restify.createServer options
-    ..on 'after' restify.auditLogger do
-      * log: logger
+  logger := bunyan.getLogger 'api'
 
   if process.env.NODE_ENV not in ['production', 'test']
     logger.info "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
@@ -302,10 +293,22 @@ export standalone = ->
     }
     stub_riak_client sinon
 
+  options =
+    name: 'kvs.io'
+    log: logger
+
+  server = restify.createServer options
+    ..on 'after' restify.auditLogger do
+      * log: logger
+
   <- server.listen if is_prod then 80 else 8080
-  init server, logger
+  init server
+
+  cli.init! # Fire up the CLI system.
+  cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
 
   cli.start_upgrader server # Allow upgrades to CLI
+
   logger.info '%s listening at %s', server.name, server.url
 
   # HTTPS server
@@ -322,6 +325,7 @@ export standalone = ->
     secure_server.on 'after' restify.auditLogger do
       * log: bunyan.getLogger 'api'
     init secure_server
+
     <- secure_server.listen if is_prod then 443 else 8081
     cli.start_upgrader secure_server # Allow upgrades to CLI
     logger.info '%s listening at %s', secure_server.name, secure_server.url
