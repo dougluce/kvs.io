@@ -11,6 +11,7 @@ require! {
   npid
   'media-type'
   contenttype
+  path
 }
 
 is_prod = process.env.NODE_ENV == 'production'
@@ -236,7 +237,9 @@ export init = (server, logobj) ->
       host = 'localhost:' + that
   server.get "/swagger/resources.json" (req, res) ->
     res.send swagger <<< host: host
-  server.get /^\/docs.*/ restify.serveStatic directory: './swagger'
+
+  server.get /^\/docs.*/ restify.serveStatic do
+    directory: path.join path.resolve __dirname, '..', 'swagger'
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
