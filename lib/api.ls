@@ -240,6 +240,12 @@ export init = (server, logobj) ->
   server.get "/swagger/resources.json" (req, res) ->
     res.send swagger <<< host: host
 
+  server.pre (req, res, next) ->
+    switch req.url
+    | '/docs/' => req.url = '/docs/index.html'
+    | '/docs' => req.url = '/docs/index.html'
+    next!
+
   server.get /^\/docs.*/ restify.serveStatic do
     directory: path.join path.resolve __dirname, '..', 'swagger'
   req, res, route, err <- server.on 'uncaughtException' 
