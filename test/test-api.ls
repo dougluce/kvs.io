@@ -451,3 +451,14 @@ describe "API" ->
       expect swagger.swagger, 'swagger' .to.equal "2.0"
       expect swagger.paths .to.contain.all.keys ['/newbucket' '/delbucket/{bucket}']
       done!
+
+  describe 'mediatypes' ->
+    specify 'should not bomb on no accept header' (done) ->
+      delete client.headers.accept
+      err, req, res, data <- client.get "/setkey/SUPERBADBUCKETHERE/wazoo/zoowahhhh"
+      # no accept means non-json
+      err = JSON.parse err.message
+      expect data .to.equal '{"code":"NotFoundError","message":"Entry not found."}'
+      expect err.message .to.equal 'Entry not found.'
+      expect err.code .to.equal 'NotFoundError'
+      done!

@@ -222,13 +222,14 @@ web_proxy = (req, res, next) ->
 #
 
 cleanAccepts = (req, res, next) ->
-    types = []
+  types = []
+  if req.headers.accept
     for type in contenttype.splitContentTypes req.headers.accept
       media = mediaType.fromString type
       delete media.parameters.charset
       types.push media.asString!
     req.headers.accept = types.join ', '
-    next!
+  next!
 
 export init = (server, logobj) ->
   logger ?:= logobj
