@@ -241,10 +241,13 @@ export init = (server, logobj) ->
     res.send swagger <<< host: host
 
   server.pre (req, res, next) ->
-    switch req.url
-    | '/docs/' => req.url = '/docs/index.html'
-    | '/docs' => req.url = '/docs/index.html'
+    if req.url == '/docs/' 
+      req.url := '/docs/index.html'
     next!
+
+  server.get /^\/docs$/ (req, res) -> 
+    res.header 'Location' '/docs/'
+    res.send 302
 
   server.get /^\/docs.*/ restify.serveStatic do
     directory: path.join path.resolve __dirname, '..', 'swagger'
