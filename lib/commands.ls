@@ -239,6 +239,9 @@ setkey.params =
     description: "The value for the key."
     required: true
     in: 'body'
+    schema: 
+      type: 'string'
+
 setkey.success = 201
 setkey.rest = ['put', '/:bucket/:key']
 setkey.summary = "Set the value of a key in a bucket."

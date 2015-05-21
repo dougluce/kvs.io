@@ -77,19 +77,27 @@ swaggerOperation = (commandname, cmd) ->
   getParams = []
   postParams = []
   restParams = []
-  for param in cmd.params
-    continue if param['x-private']
+  for cmdparam in cmd.params
+    continue if cmdparam['x-private']
+    param = {} <<<< cmdparam
     path += "/{#{param.name}}"
     restPath.push "{#{param.name}}" if param.required and param.in != 'body'
+
+    restParam = {} <<<< param
+    if not param.in
+      restParam <<< 
+        in: if param.required then 'path' else 'query'
+        type: 'string'
+    restParams.push restParam
+    delete param.schema
+
     getParams.push ({} <<<< param) <<< do
       in: 'query'
       type: 'string'
     postParams.push ({} <<<< param) <<< do
       in: 'formData'
       type: 'string'
-    restParams.push ({} <<<< param) <<< do
-      in: if param.in then param.in else if param.required then 'path' else 'query'
-      type: 'string'
+
   operation = 
     * summary: cmd.summary
       description: cmd.description
