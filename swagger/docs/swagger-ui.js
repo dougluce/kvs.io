@@ -123,7 +123,7 @@ window.SwaggerUi = Backbone.Router.extend({
   // This is bound to success handler for SwaggerApi
   //  so it gets called when SwaggerApi completes loading
   render: function(){
-    this.showMessage('Finished Loading Resource Information. Rendering Swagger UI...');
+    this.showMessage('Finished Loading Resource Information. Rendering...');
     this.mainView = new SwaggerUi.Views.MainView({
       model: this.api,
       el: $('#' + this.dom_id),
@@ -265,6 +265,7 @@ window.SwaggerUi.Views = {};
 }(this, function () {
     return SwaggerUi;
 }));
+
 this["Handlebars"] = this["Handlebars"] || {};
 this["Handlebars"]["templates"] = this["Handlebars"]["templates"] || {};
 this["Handlebars"]["templates"]["apikey_button_view"] = Handlebars.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
