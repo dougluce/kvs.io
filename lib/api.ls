@@ -52,10 +52,17 @@ The second principle of kvs.io is reliability.  Redundant front-ends
 keep availability high.  Each key-value pair is stored on at least
 three separate back-end servers.
 
-The third princple of kvs.io is speed.  A single, simple REST
+The third princple of kvs.io is speed.  A single, simple HTTP
 transaction is all it takes.  Your bucket name is your key to the
 system, and there is no need to go through an authentication
-transaction.  One hit in, one response out.  SPDY is supported.
+transaction.  One hit in, one response out.
+
+kvs.io supports two broad styles of interaction.  The RESTful
+interface provides varying methods acting on resources in the usual
+REST way.  The simple interface lets you build your application using
+only GET or POST directives and simple URL or form body based data
+exchanges.  You may use any combination of any of these methods as is
+necessary to support your application.
 
 """,
       version: "0.1"
