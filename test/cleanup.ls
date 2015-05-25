@@ -8,7 +8,7 @@ require! {
 
 riak_client = new Riak.Client ['127.0.0.1']
 
-CONCURRENCY = 20
+CONCURRENCY = 5
 
 all_keys = (bucket, cb) ->
   riak_client.secondaryIndexQuery do
@@ -62,7 +62,7 @@ deregister_all = ->
   , (err) ->
     client.close!
     json_client.close!
-    console.log "All done."
+    console.log "All deregistered."
 
 #
 # List out keys in the registry that were made via testing
@@ -91,7 +91,7 @@ find_local_keys = (cb) ->
 prune_bucket_registry = ->
   keys <- all_keys 'buckets'
   async.eachLimit keys, CONCURRENCY, (bucket, done) ->
-    if bucket == BUCKETLIST  or bucket == 'buckets' # Should never actually happen.
+    if bucket == BUCKETLIST or bucket == 'buckets' # Should never actually happen.
       console.log "Skipping BUCKETLIST #bucket"
       return done!
     riak_client.fetchValue do
@@ -99,20 +99,21 @@ prune_bucket_registry = ->
         key: bucket
         convertToJs: false
       (err, result) ->
-        o = JSON.parse result.values.shift!value.toString 'utf8'
-        if o.test # It's a test bucket.
-          console.log "Removing test bucket #bucket from #{o.test}"
-          err <- deleteall bucket
-          if err
-            console.log "Errored on #bucket: #err"
-            return done err
-          else
-            deregister bucket, done
+        if not result?isNotFound
+          o = JSON.parse result.values.shift!value.toString 'utf8'
+          if o.test # It's a test bucket.
+            console.log "Removing test bucket #bucket from #{o.test}"
+            err <- deleteall bucket
+            if err
+              console.log "Errored on #bucket: #err"
+              return done err
+            else
+              return deregister bucket, done
         done!
   , (err) ->
     client.close!
     json_client.close!
-    console.log "All done."
+    console.log "All pruned."
 
 
 #
