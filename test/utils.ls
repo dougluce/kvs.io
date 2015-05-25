@@ -82,7 +82,7 @@ export deleteall = (bucket, done) ->
         stream: false
     expect err, "deleteall from #bucket #err" .to.be.null
     keys := [..objectKey for result.values]
-    async.each keys, (key, done) ->
+    async.eachLimit keys, 5, (key, done) ->
       err, result <- riak_client.deleteValue do
         * bucket: bucket
           key: key
