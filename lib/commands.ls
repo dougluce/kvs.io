@@ -216,7 +216,6 @@ Once a bucket is deleted, its name and contents are forever lost.  It
 cannot be created under the same name that it previously had.
 """
 
-# Gonna make a "newkey" also.
 export setkey = (bucket, key, value, cb) ->
   <- confirm_exists bucket, cb
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
@@ -255,11 +254,58 @@ value. If the key already exists, the old value will be lost.
 
 ## Limitations
 
-Key names are restricted to #MAXKEYLENGTH bytes maximum.  Larger key names are
-not rejected, but will be truncated to #MAXKEYLENGTH bytes before setting.
+Key names are restricted to #MAXKEYLENGTH bytes maximum.  Larger key
+names are not rejected but are truncated to #MAXKEYLENGTH bytes before
+setting.
 
 Values are restricted to #MAXVALUELENGTH bytes.  Larger values will
-not be rejected, but will be truncated before storing.
+not be rejected but will be truncated before storing.
+
+"""
+
+export newkey = (bucket, value, cb) ->
+  <- confirm_exists bucket, cb
+  ex, key <- randomString
+  return cb ex if ex
+  # See if it exists
+  err, result <- fetchValue bucket, key
+  return cb err if err
+  return cb 'bad error' if not result.isNotFound
+  <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
+    ..setContentType 'text/plain'
+    ..setValue value
+  cb null, key
+
+newkey.errors =
+  * 'not found'
+  ...
+newkey.group = 'keys'
+newkey.params =
+  * name: 'bucket'
+    description: "The bucket name."
+    required: true
+  * name: 'value'
+    description: "The value for the key."
+    required: true
+    in: 'body'
+newkey.success = 201
+newkey.rest = ['put', '/:bucket']
+newkey.summary = "Create a new key and set its value."
+newkey.description = """
+# Put a new value into the bucket and create a key for it
+
+This will generate a new key and store the given value under that key.
+
+The new key is guaranteed not to already exist.
+
+The key is created as a random 20-character string using the Yarrow
+algorithm with 256-bit AES seeded by the Intel Secure Key hardware
+randomness generator.
+
+## Limitations
+
+Values are restricted to #MAXVALUELENGTH bytes.  Larger values will
+not be rejected but will be truncated before storing.
 
 """
 

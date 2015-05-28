@@ -128,6 +128,46 @@ describe "Commands" ->
         expect value.slice -10 .to.equal 'vvvvvvvvvE'
         expect err, err .to.be.null
         done!
+
+  describe '/newkey' ->
+    bucket = ""
+    
+    before (done) ->
+      (newbucket) <- utils.markedbucket true
+      bucket := newbucket
+      done!
+  
+    specify 'should create a new' (done) ->
+      err, key <- commands.newkey bucket, "it's some maroon"
+      expect err,err .to.be.null
+      expect key .to.match /^[0-9a-zA-Z]{20}$/
+      done!
+
+    specify 'should fail on bad bucket' (done) ->
+      err, key <- commands.newkey "SOMEKINDABADBUCKET", "nonmaroon"
+      expect err .to.equal 'not found'
+      expect key .to.be.undefined
+      done!
+  
+    describe "only the first #{VALUELENGTH} value chars count." (done) ->
+      basevalue = Array VALUELENGTH .join 'v' # VALUELENGTH-1 length string
+  
+      specify 'Add one to get the full length' (done) ->
+        err, key <- commands.newkey bucket, "#{basevalue}E" 
+        expect key .to.match /^[0-9a-zA-Z]{20}$/
+        err, value <- commands.getkey bucket, key
+        expect value.length .to.equal VALUELENGTH
+        expect value .to.equal "#{basevalue}E"
+        expect err, err .to.be.null
+        done!
+  
+      specify 'Value too long?  It gets chopped.' (done) ->
+        err, key <- commands.newkey bucket, "#{basevalue}EECHEEWAMAA"
+        err, value <- commands.getkey bucket, key
+        expect value.length .to.equal VALUELENGTH
+        expect value.slice -10 .to.equal 'vvvvvvvvvE'
+        expect err, err .to.be.null
+        done!
   
   describe '/getkey' ->
     bucket = ""

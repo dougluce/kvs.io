@@ -34,7 +34,7 @@ swagger =
     info:
       title: "The kvs.io API",
       description: """
-# A simple, fast, always-available key-value store.
+# A simple, reliable, and fast key-value store.
 
 The kvs.io service provides a globally accessible key-value store
 organized into buckets and stored redundantly.
