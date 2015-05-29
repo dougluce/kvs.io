@@ -288,6 +288,8 @@ newkey.params =
     description: "The value for the key."
     required: true
     in: 'body'
+    schema: 
+      type: 'string'
 newkey.success = 201
 newkey.rest = ['put', '/:bucket']
 newkey.summary = "Create a new key and set its value."
