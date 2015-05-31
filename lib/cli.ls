@@ -320,23 +320,9 @@ function cli_open socket
     <- do_parse line, rl, socket
     rl.resume!
 
-  # Tell Telnet to not buffer.
-  <- setTimeout _, is_prod ? 200 : 100 # To allow for drainage
-  buf = new Buffer [255 253 34 255 250 34 1 0 255 240 255 251 1]
-  socket.write buf, 'binary'
-
-  got_options = false # We don't know it's Telnet yet
-  option_checker = (data) ->
-    if data.readUInt8(0) == 255
-      got_options := true
-  socket.on 'data', option_checker
-  <- setTimeout _, is_prod ? 200 : 1 # To allow for option eating
-  
-  socket.removeListener 'data', option_checker
-  rl := readline.createInterface socket, socket, null, got_options
+  rl := readline.createInterface socket, socket, null
     ..setPrompt '>'
     ..on 'line' cli
-    ..output.write '\r                 \r' # Clear options for non-Telnet
     ..output.write banner + "\r\n"
     ..prompt!
 

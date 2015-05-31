@@ -21,11 +21,8 @@ describe "CLI alone" ->
 
     telnet_server := cli.start_telnetd 7008
     d := new utils.Connector '127.0.0.1', 7008, ->
-      data <- d.wait 1 # Wait for telnet options
-      x = new Buffer data[0] .toString 'base64'
-      expect x, 'be_telnet' .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
-      data <- d.wait 2 # After pause, get option erase string
-      expect data .to.eql ['\r                 \r' + cli.banner, '>']
+      data <- d.wait 2 # Get banner and prompt
+      expect data .to.eql [cli.banner, '>']
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!
@@ -103,11 +100,8 @@ describe "CLI full commands" ->
 
     telnet_server := cli.start_telnetd 7009
     d := new utils.Connector '127.0.0.1', 7009, ->
-      data <- d.wait 1 # Wait for telnet options
-      x = new Buffer data[0] .toString 'base64'
-      expect x .to.eql '77+977+9Iu+/ve+/vSIBAO+/ve+/ve+/ve+/vQE='
-      data <- d.wait 2 # After pause, get option erase string
-      expect data .to.eql ['\r                 \r' + cli.banner, '>']
+      data <- d.wait 2 # Get banner and prompt
+      expect data .to.eql [cli.banner, '>']
       data <- d.send '', 1 # Enter gives prompt back.
       expect data .to.eql ['>']
       done!
