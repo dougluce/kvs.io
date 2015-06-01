@@ -76,6 +76,16 @@ bvalue =
   description: "B-value, passed on to callbacks"
   required: false
 
+
+firecallbacks = (bucket, func, ...args) ->
+  <- process.nextTick
+  err, result <- fetchValue BUCKET_LIST, bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  bucket_info = result.values[0]
+  for url, _ of bucket_info.callbacks
+    console.log "Gonna call back on #{url}"
+
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
   return cb ex if ex
