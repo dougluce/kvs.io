@@ -449,7 +449,7 @@ describe "API" ->
       err, req, res, data <- client.get "/swagger/resources.json"
       swagger = JSON.parse data
       expect swagger.swagger, 'swagger' .to.equal "2.0"
-      expect swagger.paths .to.contain.all.keys ['/newbucket' '/delbucket/{bucket}']
+      expect swagger.paths .to.contain.all.keys ['/newbucket/{b}' '/delbucket/{bucket}/{b}']
       done!
 
   describe 'mediatypes' ->

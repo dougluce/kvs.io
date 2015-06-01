@@ -123,14 +123,15 @@ describe "CLI full commands" ->
     done!
 
   specify 'help listkeys should give me help on listkeys' (done) ->
-    data <- d.send 'help listkeys', 8
+    data <- d.send 'help listkeys', 9
     expect data, 'hlsgmhol' .to.eql do
       * ''
-        '  listkeys bucket [keycontains]'
+        '  listkeys bucket [keycontains] [b]'
         ''
         'List keys in a bucket.'
         '  bucket: The bucket name.'
         '  keycontains: A substring to search for.'
+        '  b: B-value, passed on to postbacks'
         ''
         '>'
     done!
@@ -157,8 +158,8 @@ describe "CLI full commands" ->
     done!
 
   specify 'too many params means error' (done) ->
-    data <- d.send 'setkey hey whats this now', 2
-    expect data, 'tmpms' .to.eql ["Too many arguments.", '>']
     data <- d.send 'setkey hey whats this now guys', 2
+    expect data, 'tmpms' .to.eql ["Too many arguments.", '>']
+    data <- d.send 'setkey hey whats this now guys huh', 2
     expect data, 'tmpms2' .to.eql ["Too many arguments.", '>']
     done!

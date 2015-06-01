@@ -62,7 +62,7 @@ export markedbucket = (mark, done) ->
   test = false
   if process.env.NODE_ENV != 'production'
     test = "env #{process.env.NODE_ENV}"
-  err, bucket <- commands.newbucket "Run on #{os.hostname!} at #now", "127.0.0.1", test
+  err, bucket <- commands.newbucket "Run on #{os.hostname!} at #now", "127.0.0.1", test, null
   expect err .to.be.null
   if mark
     <- mark_bucket bucket

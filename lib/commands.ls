@@ -68,7 +68,12 @@ confirm_found = (err, result, cb, rest) ->
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
 
-export newbucket = (info, ip, test, cb) ->
+bvalue =
+  name: 'b'
+  description: "B-value, passed on to postbacks"
+  required: false
+
+export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
   return cb ex if ex
   # Does this bucket exist?
@@ -98,6 +103,7 @@ newbucket.params =
     description: "Marks this as a test bucket"
     required: false
     'x-private': true
+  * bvalue
 newbucket.rest = ['post' '/']
 newbucket.success = 201
 newbucket.errors =
@@ -133,7 +139,7 @@ See the setkey command for other limitations on kvs.io
 
 """
 
-export listkeys = (bucket, keycontains, cb) ->
+export listkeys = (bucket, keycontains, b, cb) ->
   <- confirm_exists bucket, cb
   keycontains .= toLowerCase! if keycontains
   riak_client.secondaryIndexQuery do
@@ -149,7 +155,7 @@ export listkeys = (bucket, keycontains, cb) ->
         else
           values := [..objectKey for result.values]
       <- confirm_no_error err, values, cb
-      listkeys bucket, keycontains, cb
+      listkeys bucket, keycontains, null, cb
 
 listkeys.group = 'buckets'
 listkeys.params =
@@ -159,6 +165,7 @@ listkeys.params =
   * name: 'keycontains'
     description: "A substring to search for."
     required: false
+  * bvalue
 listkeys.rest = ['get', /^\/([^\/]{20})$/]
 listkeys.mapparams = { '0': 'bucket', '1': 'keycontains' }
 listkeys.success = 200
@@ -181,10 +188,10 @@ listkeys.returnformatter = (w, keys) ->
   for key in keys
     w key
 
-export delbucket = (bucket, cb) ->
+export delbucket = (bucket, b, cb) ->
   <- confirm_exists bucket, cb
   # Is there anything in the bucket?
-  err, values <- listkeys bucket, null
+  err, values <- listkeys bucket, null, null
   return cb 'not empty' if values.length > 0
   # Nope, delete it.
   err, result <- riak_client.deleteValue do
@@ -198,7 +205,7 @@ delbucket.params =
   * name: 'bucket'
     description: "The bucket to delete."
     required: true
-  ...
+  * bvalue
 delbucket.rest = ['del', '/:bucket']
 delbucket.success = 204
 delbucket.errors =
@@ -216,7 +223,7 @@ Once a bucket is deleted, its name and contents are forever lost.  It
 cannot be created under the same name that it previously had.
 """
 
-export setkey = (bucket, key, value, cb) ->
+export setkey = (bucket, key, value, b, cb) ->
   <- confirm_exists bucket, cb
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
@@ -240,6 +247,7 @@ setkey.params =
     in: 'body'
     schema: 
       type: 'string'
+  * bvalue
 
 setkey.success = 201
 setkey.rest = ['put', '/:bucket/:key']
@@ -263,7 +271,7 @@ not be rejected but will be truncated before storing.
 
 """
 
-export newkey = (bucket, value, cb) ->
+export newkey = (bucket, value, b, cb) ->
   <- confirm_exists bucket, cb
   ex, key <- randomString
   return cb ex if ex
@@ -290,6 +298,7 @@ newkey.params =
     in: 'body'
     schema: 
       type: 'string'
+  * bvalue
 newkey.success = 201
 newkey.rest = ['put', '/:bucket']
 newkey.summary = "Create a new key and set its value."
@@ -311,7 +320,7 @@ not be rejected but will be truncated before storing.
 
 """
 
-export getkey = (bucket, keys, cb) ->
+export getkey = (bucket, keys, b, cb) ->
   <- confirm_exists bucket, cb
   try  # Allow multiple keys as JSON string.
     keylist = JSON.parse keys
@@ -345,6 +354,7 @@ getkey.params =
   * name: 'key'
     description: "The key."
     required: true
+  * bvalue
 getkey.rest = ['get', /^\/([^\/]{20})\/([^\/]+)$/]
 getkey.mapparams = {'0': 'bucket', '1': 'key'}
 getkey.success = 200
@@ -359,7 +369,7 @@ This will return the value of a key in a bucket.
 
 """
 
-export delkey = (bucket, key, cb) ->
+export delkey = (bucket, key, b, cb) ->
   <- confirm_exists bucket, cb
   # Does the entry exist?
   err, result <- fetchValue bucket, key
@@ -378,6 +388,8 @@ delkey.params =
   * name: 'key'
     description: "The key to delete."
     required: true
+  * bvalue
+
 delkey.rest = ['del', '/:bucket/:key']
 delkey.success = 204
 delkey.errors =
@@ -389,5 +401,58 @@ delkey.description = """
 
 This removes the key-value pair referenced by the given key, and is
 not reversible.  If you delete a key-value pair, it is gone forever.
+
+"""
+
+export register_callback = (bucket, url, b, cb) ->
+  <- confirm_exists bucket, cb
+  # Does the entry exist?
+  err, result <- fetchValue bucket, key
+  <- confirm_found err, result, cb
+  err, result <- riak_client.deleteValue do
+    * bucket: bucket
+      key: key
+  <- confirm_found err, result, cb
+  cb null
+
+register_callback.group = 'buckets'
+register_callback.params =
+  * name: 'bucket'
+    description: "The bucket with this key."
+    required: true
+  * name: 'url'
+    description: "The URL to fire on bucke change"
+    required: true
+  * bvalue
+register_callback.rest = ['put', '/:bucket/:url']
+register_callback.success = 201
+register_callback.errors =
+  * 'not found'
+  ...
+register_callback.summary = "Register a bucket callback."
+register_callback.description = """
+# Register a bucket callback
+
+Any change to the given bucket is communicated to the URLs registered
+through this call.  Your URL can contain macros that will expand to
+values upon callback.
+
+Macros supported:
+
+%o API operation
+  Will be one of: 
+  newbucket, listkeys, delbucket, setkey, newkey, getkey, delkey, register_callback
+%p operation parameters
+  newbucket: bucket -- bucket created
+  listkeys: bucket -- bucket keys are listed within
+  delbucket: bucket -- bucket deleted
+  setkey: bucket, key, value
+  newkey: bucket, value
+  getkey: bucket, key
+  delkey: bucket, key
+  register_callback: bucket, url
+%i IP of client triggering callback
+%b client B-value.  If a parameter named "b" is added to the client
+   API call, this will contain the contents of that parameter.
 
 """
