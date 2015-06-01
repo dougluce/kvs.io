@@ -8,6 +8,7 @@ require! {
   '../lib/commands'
   crypto
   domain
+  async
 }
 
 KEYLENGTH = 256 # Significant length of keys.
@@ -287,17 +288,20 @@ describe "Commands" ->
       @timeout 10000
       newbucket <- utils.markedbucket true
       bucket := newbucket
-      <- commands.setkey bucket, "woohoo", "value here", null
-      <- commands.setkey bucket, "werp", "value here", null
-      <- commands.setkey bucket, "werpawhoo", "value here", null
-      <- commands.setkey bucket, "WhoeverKnowsShouldKnow", "value here", null
-      <- commands.setkey bucket, "StaggeringlyLessEfficient", "value here", null
-      <- commands.setkey bucket, "EatingItStraightOutOfTheBag", "value here", null
-      <- commands.setkey bucket, "#{basekey}WHOP", "value here", null
-      <- commands.setkey bucket, "#{basekey}WERP", "value here", null # Should get lost...
-      <- commands.setkey bucket, "#{basekey}", "value here", null
-      <- commands.setkey bucket, "#{basekey.substr 0, KEYLENGTH-4}awho", "value here", null
-      <- commands.setkey bucket, "#{basekey.substr 0, KEYLENGTH-3}awho", "value here", null # Should be truncated
+      kv_pairs = 
+        * "woohoo", "value here"
+        * "werp", "value here"
+        * "werpawhoo", "value here"
+        * "WhoeverKnowsShouldKnow", "value here"
+        * "StaggeringlyLessEfficient", "value here"
+        * "EatingItStraightOutOfTheBag", "value here"
+        * "#{basekey}WHOP", "value here"
+        * "#{basekey}WERP", "value here" # Should get lost...
+        * "#{basekey}", "value here"
+        * "#{basekey.substr 0, KEYLENGTH-4}awho", "value here"
+        * "#{basekey.substr 0, KEYLENGTH-3}awho", "value here" # Should be truncated
+      <- async.each kv_pairs, (keyvalue, cb) ->
+        commands.setkey bucket, keyvalue[0], keyvalue[1], null, cb
       done!
   
     specify 'should list keys' (done) ->
