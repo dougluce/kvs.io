@@ -14,7 +14,7 @@ require! {
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
-sandbox = client = json_client = null
+sandbox = null
 
 describe "Commands" ->
   before (done) ->
@@ -62,7 +62,7 @@ describe "Commands" ->
     bucket = ""
     
     before (done) ->
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       done!
   
@@ -134,7 +134,7 @@ describe "Commands" ->
     bucket = ""
     
     before (done) ->
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       done!
   
@@ -174,7 +174,7 @@ describe "Commands" ->
   describe '/getkey' ->
     bucket = ""
     before (done) ->
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       <- commands.setkey bucket, "warzoo", "nozoo", null
       <- commands.setkey bucket, "fofrzoo", "rennets", null
@@ -231,7 +231,7 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       done!
 
@@ -354,7 +354,7 @@ describe "Commands" ->
     bucket = ""
   
     beforeEach (done) ->
-      (newbucket) <- utils.markedbucket false
+      newbucket <- utils.markedbucket false
       bucket := newbucket
       <- commands.setkey bucket, "junkbucketfufto", 'whatyo', null
       done!
@@ -386,7 +386,7 @@ describe "Commands" ->
     bucket = ""
   
     before (done) ->
-      (newbucket) <- utils.markedbucket true
+      newbucket <- utils.markedbucket true
       bucket := newbucket
       done!
       
@@ -417,4 +417,39 @@ describe "Commands" ->
           expect value, "value no match" .to.equal utf_string
           done!
   
+  describe '/callbacks' ->
+    bucket = null
+  
+    beforeEach (done) ->
+      newbucket <- utils.markedbucket true
+      bucket := newbucket
+      done!
 
+    specify 'should register a callback' (done) ->
+      err <- commands.register_callback bucket, 'http://localhost', null
+      expect err,err .to.be.null
+      done!
+
+    specify 'should list callbacks' (done) ->
+      err <- commands.register_callback bucket, 'http://localhost/one', null
+      expect err,err .to.be.null
+      err <- commands.register_callback bucket, 'http://localhost/two', null
+      expect err,err .to.be.null
+      err, callbacks <- commands.list_callbacks bucket, null
+      expect err,err .to.be.null
+      expect callbacks, 'slc' .to.eql do
+        'http://localhost/one': 'on'
+        'http://localhost/two': 'on'
+      done!
+      
+    specify 'should delete a callback' (done) ->
+      err <- commands.register_callback bucket, 'http://localhost/three', null
+      expect err,err .to.be.null
+      err <- commands.register_callback bucket, 'http://localhost/four', null
+      expect err,err .to.be.null
+      err <- commands.delete_callback bucket, 'http://localhost/four', null
+      err, callbacks <- commands.list_callbacks bucket, null
+      expect callbacks, 'slc' .to.eql do
+        'http://localhost/three': 'on'
+        ...
+      done!

@@ -8,6 +8,7 @@ require! {
 MAXKEYLENGTH = 256
 MAXVALUELENGTH = 65536
 
+BUCKET_LIST = 'buckets'
 riak_client = null # Here to allow stubbing by tests.
 
 randomString = (cb) ->
@@ -55,7 +56,7 @@ confirm_no_error = (err, result, next, cb) ->
   next err, result
 
 confirm_exists = (bucket, cb, rest) ->
-  err, result <- fetchValue 'buckets' bucket
+  err, result <- fetchValue BUCKET_LIST, bucket
   return cb err if err
   return cb 'not found' if result.isNotFound
   rest!
@@ -77,16 +78,16 @@ export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
   return cb ex if ex
   # Does this bucket exist?
-  err, result <- fetchValue 'buckets' bucket_name
+  err, result <- fetchValue BUCKET_LIST, bucket_name
   return cb err if err
   return cb 'bucket already exists', bucket_name if not result.isNotFound
   # Mark this bucket as taken and record by whom.
-  value =
+  bucket_info = 
     ip: ip
     date: new Date!toISOString!
     info: info # Additional info identifying bucket creator
-  value['test'] = test if test
-  <- storeValue "buckets", bucket_name, value
+  bucket_info['test'] = test if test
+  <- storeValue BUCKET_LIST, bucket_name, bucket_info
   cb null, bucket_name
 
 newbucket.group = 'buckets'
@@ -155,7 +156,7 @@ export listkeys = (bucket, keycontains, b, cb) ->
         else
           values := [..objectKey for result.values]
       <- confirm_no_error err, values, cb
-      listkeys bucket, keycontains, null, cb
+      listkeys bucket, keycontains, b, cb
 
 listkeys.group = 'buckets'
 listkeys.params =
@@ -196,7 +197,7 @@ export delbucket = (bucket, b, cb) ->
   return cb 'not empty' if values.length > 0
   # Nope, delete it.
   err, result <- riak_client.deleteValue do
-    * bucket: 'buckets'
+    * bucket: BUCKET_LIST
       key: bucket
   <- confirm_found err, result, cb
   cb null
@@ -407,23 +408,26 @@ not reversible.  If you delete a key-value pair, it is gone forever.
 
 export register_callback = (bucket, url, b, cb) ->
   <- confirm_exists bucket, cb
-  # Does the entry exist?
-  err, result <- fetchValue bucket, key
-  <- confirm_found err, result, cb
-  err, result <- riak_client.deleteValue do
-    * bucket: bucket
-      key: key
-  <- confirm_found err, result, cb
+  err, bucket_info <- fetchValue BUCKET_LIST, bucket
+  bucket_info = bucket_info.values[0]
+  if bucket_info.callbacks
+    callbacks = bucket_info.callbacks
+  else
+    callbacks = bucket_info.callbacks = {}
+  callbacks[url] = "on"
+  <- storeValue BUCKET_LIST, bucket, bucket_info
   cb null
 
 register_callback.group = 'buckets'
 register_callback.params =
   * name: 'bucket'
-    description: "The bucket with this key."
+    description: "The bucket to register a callback on."
     required: true
   * name: 'url'
     description: "The URL to fire on bucke change"
     required: true
+    in: 'query'
+    type: 'string'
   * bvalue
 register_callback.rest = ['put', '/:bucket/:url']
 register_callback.success = 201
@@ -440,10 +444,10 @@ values upon callback.
 
 Macros supported:
 
-%o API operation
++ %o API operation
   Will be one of: 
   newbucket, listkeys, delbucket, setkey, newkey, getkey, delkey, register_callback
-%p operation parameters
++ %p operation parameters
   newbucket: bucket -- bucket created
   listkeys: bucket -- bucket keys are listed within
   delbucket: bucket -- bucket deleted
@@ -452,8 +456,75 @@ Macros supported:
   getkey: bucket, key
   delkey: bucket, key
   register_callback: bucket, url
-%i IP of client triggering callback
-%b client B-value.  If a parameter named "b" is added to the client
++ %i IP of client triggering callback
++ %b client B-value.  If a parameter named "b" is added to the client
    API call, this will contain the contents of that parameter.
 
+"""
+
+export list_callbacks = (bucket, b, cb) ->
+  err, result <- fetchValue BUCKET_LIST, bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  bucket_info = result.values[0]
+  <- confirm_no_error err, bucket_info.callbacks, cb
+  list_callbacks bucket, url, b, cb
+
+list_callbacks.group = 'buckets'
+list_callbacks.params =
+  * name: 'bucket'
+    description: "The bucket to list callbacks on."
+    required: true
+  * bvalue
+list_callbacks.rest = ['get', /\/callback\/^\/([^\/]{20})$/]
+list_callbacks.restpath = 'callback'
+list_callbacks.success = 200
+list_callbacks.errors =
+  * 'not found'
+  ...
+list_callbacks.summary = "List callbacks registered on a bucket"
+list_callbacks.description = """
+# List callbacks registered on a bucket
+
+This shows a list of all URL's that are currently registered as
+callbacks on the given bucket.
+
+"""
+
+list_callbacks.returnformatter = (w, callbacks) ->
+  w "Callbacks on bucket:"
+  for callback in callbacks
+    w key
+
+export delete_callback = (bucket, url, b, cb) ->
+  err, result <- fetchValue BUCKET_LIST, bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  bucket_info = result.values[0]
+  delete bucket_info.callbacks[url]
+  <- storeValue BUCKET_LIST, bucket, bucket_info
+  cb null
+
+delete_callback.group = 'buckets'
+delete_callback.params =
+  * name: 'bucket'
+    description: "The bucket to delete the callback from."
+    required: true
+  * name: 'url'
+    description: "The URL to remove from callbacks."
+    required: true
+    in: 'query'
+    type: 'string'
+  * bvalue
+delete_callback.rest = ['del', '/callback/:bucket']
+delete_callback.restpath = 'callback'
+delete_callback.success = 204
+delete_callback.errors =
+  * 'not found'
+  ...
+delete_callback.summary = "Delete a bucket callback."
+delete_callback.description = """
+# Delete a bucket callback."
+
+Remove the given URL from the list of bucket callbacks.
 """
