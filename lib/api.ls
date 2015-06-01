@@ -29,7 +29,7 @@ handle_error = (err, next, good) ->
   good! # If there's no error, continue on!
   next!
   
-swagger = 
+export swagger = 
   * swagger: "2.0"
     info:
       title: "The kvs.io API",
@@ -87,8 +87,8 @@ swaggerOperation = (commandname, cmd) ->
   for cmdparam in cmd.params
     continue if cmdparam['x-private']
     param = {} <<<< cmdparam
-    path += "/{#{param.name}}"
-    restPath.push "{#{param.name}}" if param.required and param.in != 'body'
+    path += "/{#{param.name}}" if param.in not in ['query']
+    restPath.push "{#{param.name}}" if param.required and param.in not in ['query', 'body']
 
     restParam = {} <<<< param
     if not param.in
@@ -99,8 +99,9 @@ swaggerOperation = (commandname, cmd) ->
     delete param.schema
 
     getParams.push ({} <<<< param) <<< do
-      in: 'query'
+      in: if param.in == 'query' then 'query' else 'path'
       type: 'string'
+
     postParams.push ({} <<<< param) <<< do
       in: 'formData'
       type: 'string'
@@ -343,6 +344,7 @@ export standalone = ->
       key: fs.readFileSync '/etc/ssl/kvs.io.key'
       ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
       ciphers: 'ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:AES128-GCM-SHA256:HIGH:!MD5:!aNULL'
+
       honorCipherOrder: true
 
   if options['spdy']

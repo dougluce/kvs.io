@@ -165,7 +165,8 @@ listkeys.params =
   * name: 'keycontains'
     description: "A substring to search for."
     required: false
-  * bvalue
+    in: 'query'
+    type: 'string'
 listkeys.rest = ['get', /^\/([^\/]{20})$/]
 listkeys.mapparams = { '0': 'bucket', '1': 'keycontains' }
 listkeys.success = 200
@@ -179,7 +180,7 @@ listkeys.description = """
 Given a bucket name, show the keys that exist in the bucket.
 
 If the optional keycontains parameter is given, only those keys that
-contain the string given by it are shown.
+contain the given string are shown.
 
 """
 
