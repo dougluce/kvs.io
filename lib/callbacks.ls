@@ -11,7 +11,7 @@ export firecallbacks = (bucket, func, ...args) ->
   err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
   return if err # Probably oughta throw instead
   return if result.isNotFound # Probably oughta throw instead
-  bucket_info = result.values[0]
+  bucket_info = JSON.parse result.values[0].getValue!
   sendmessage process.pid.toString!, {bucket: bucket, event: func, args: args}
   for let url, callback of bucket_info.callbacks
     req = http.request url, (res) ->
@@ -41,7 +41,7 @@ export firecallbacks = (bucket, func, ...args) ->
 
 export register = (bucket, url, cb) ->
   err, bucket_info <- commands.fetchValue commands.BUCKET_LIST, bucket
-  bucket_info = bucket_info.values[0]
+  bucket_info = JSON.parse bucket_info.values[0].getValue!
   if bucket_info.callbacks
     callbacks = bucket_info.callbacks
   else
@@ -57,14 +57,14 @@ export list = (bucket, cb) ->
   err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
   return cb err if err
   return cb 'not found' if result.isNotFound
-  bucket_info = result.values[0]
+  bucket_info = JSON.parse result.values[0].getValue!
   cb null, bucket_info.callbacks
 
 export remove = (bucket, url, cb) ->
   err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
   return cb err if err
   return cb 'not found' if result.isNotFound
-  bucket_info = result.values[0]
+  bucket_info = JSON.parse result.values[0].getValue!
   delete bucket_info.callbacks[url]
   <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
   cb null

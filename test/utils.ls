@@ -119,11 +119,17 @@ export stub_riak_client = (sinon) ->
       {bucket, key} = options
       unless stub_riak[bucket]?[key]?
         return cb null, {isNotFound: true, values: []}
-      cb null, {values: [ stub_riak[bucket][key] ]}
+      cb null, stub_riak[bucket][key]
     storeValue: (options, cb) ->
       {bucket, key, value} = options
+      unless value instanceof Riak.Commands.KV.RiakObject
+        if value instanceof Object
+          value = new Buffer JSON.stringify value
+        ro = new Riak.Commands.KV.RiakObject!
+        ro.setValue value
+        value = ro
       stub_riak[bucket] = {} unless stub_riak[bucket]
-      stub_riak[bucket][key] = value
+      stub_riak[bucket][key] = {values: [value]}
       cb null, {}
     secondaryIndexQuery: (options, cb) ->
       {bucket, indexName, indexKey, stream} = options

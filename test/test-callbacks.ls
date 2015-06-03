@@ -1,13 +1,14 @@
 require! {
   http
   chai: {expect}
+  sinon
   './utils'
   '../lib/commands'
 }
 
 describe 'Callbacks' ->
   describe 'Registered callbacks' ->
-    bucket = callback_url = null
+    bucket = callback_url = sandbox = null
 
     before (done) ->
       seen = {}
@@ -21,6 +22,14 @@ describe 'Callbacks' ->
       server.listen 0
       <- server.on 'listening'
       callback_url := "http://localhost:#{server.address!port}"
+      sandbox := sinon.sandbox.create!
+      if process.env.NODE_ENV != 'test'
+        utils.stub_riak_client sandbox
+      commands.init!
+      done!
+
+    after (done) ->
+      sandbox.restore!
       done!
 
     beforeEach (done) ->
@@ -52,34 +61,44 @@ describe 'Callbacks' ->
       expect err,err .to.be.null
       err <- commands.delete_callback bucket, 'http://localhost/four', null
       err, callbacks <- commands.list_callbacks bucket, null
-      expect callbacks, 'slc' .to.eql do
+      expect callbacks, 'sdac' .to.eql do
         'http://localhost/three': { data: null, log: [], method: 'GET' }
         ...
       done!
 
     specify 'should fire and report on callback' (done) ->
+      timeout_scale = 10
+      if process.env.NODE_ENV == 'test'
+        timeout_scale := 200
       err <- commands.register_callback bucket, callback_url + "?morphal", null
       expect err,err .to.be.null
       err <- commands.setkey bucket, "key", "data", "whatsup"
+      <- setTimeout _, timeout_scale
       err, callbacks <- commands.list_callbacks bucket, null
-      <- setTimeout _, 100
-      expect callbacks, 'slc' .to.eql do
+      expect callbacks, 'sfaroc' .to.eql do
         * "#{callback_url}?morphal": { data: null, log: [{body: "Something /?morphal", status: 200}], method: 'GET' }
         ...
       done!
 
     specify 'should fire multiple callbacks' (done) ->
+      timeout_scale = 30
+      if process.env.NODE_ENV == 'test'
+        timeout_scale := 100
+      @timeout timeout_scale * 50
       err <- commands.register_callback bucket, callback_url + "?first", null
       expect err,err .to.be.null
+      <- setTimeout _, timeout_scale
       err <- commands.register_callback bucket, callback_url + "?second", null
       expect err,err .to.be.null
+      <- setTimeout _, timeout_scale
       err <- commands.setkey bucket, "key", "data", "whatsup"
       expect err,err .to.be.null
+      <- setTimeout _, timeout_scale
       err <- commands.setkey bucket, "key", "data", "whatdown"
       expect err,err .to.be.null
+      <- setTimeout _, timeout_scale * 2
       err, callbacks <- commands.list_callbacks bucket, null
-      <- setTimeout _, 100
-      expect callbacks, 'slc' .to.eql do
+      expect callbacks, 'sfmc' .to.eql do
         * "#{callback_url}?first":
             data: null
             log:

@@ -33,7 +33,7 @@ export storeValue = (bucket, key, value, next) ->
   key .= substr 0, MAXKEYLENGTH
   if typeof value == 'string'
     value .= substr 0, MAXVALUELENGTH
-  if typeof value == 'object' and value.value
+  if typeof value == 'object' and typeof value?value == 'string'
     value.value .= substr 0, MAXVALUELENGTH
   riak_client.storeValue do
     * bucket: bucket
@@ -342,7 +342,7 @@ export getkey = (bucket, keys, b, cb) ->
       null 
     else
       found++
-      result.values.shift!value.toString 'utf8'
+      result.values[0].getValue!toString 'utf8'
     done!
   , (err) ->
     return cb err if err
