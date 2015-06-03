@@ -6,7 +6,6 @@ require! {
   ipware
   './commands'
   './cli'
-  'prelude-ls': {map}
   fs
   npid
   'media-type'

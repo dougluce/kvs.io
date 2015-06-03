@@ -29,10 +29,10 @@
     "livescript": "^1.4.0",
     "media-type": "git://github.com/dougluce/media-type.git#wildcard-type-match",
     "npid": "^0.4.0",
-    "prelude-ls": "^1.1.1",
     "request": "^2.55.0",
     "restify": "^3.0.2",
-    "swagger-tools": "^0.8.7"
+    "swagger-tools": "^0.8.7",
+    "zmq": "^2.11.1"
   },
   "devDependencies": {
     "benchmark": "^1.0.0",

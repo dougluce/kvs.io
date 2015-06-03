@@ -3,13 +3,13 @@ require! {
   crypto
   ipware
   async
-  http
+  './callbacks'
 }
 
 MAXKEYLENGTH = 256
 MAXVALUELENGTH = 65536
 
-BUCKET_LIST = 'buckets'
+export BUCKET_LIST = 'buckets'
 riak_client = null # Here to allow stubbing by tests.
 
 randomString = (cb) ->
@@ -69,43 +69,12 @@ confirm_found = (err, result, cb, rest) ->
 
 export init = ->
   riak_client := new Riak.Client ['127.0.0.1']
+  callbacks.init @
 
 bvalue =
   name: 'b'
-  description: "B-value, passed on to postbacks"
+  description: "B-value, passed on to callbacks"
   required: false
-
-firecallbacks = (bucket, func, ...args) ->
-  <- process.nextTick
-  err, result <- fetchValue BUCKET_LIST, bucket
-  return if err # Probably oughta throw instead
-  return if result.isNotFound # Probably oughta throw instead
-  bucket_info = result.values[0]
-  for let url, callback of bucket_info.callbacks
-    req = http.request url, (res) ->
-      body = ""
-      res.setEncoding 'utf8'
-      res.on 'data', (chunk) ->
-        body += chunk
-      res.on 'end', ->
-        callback.log = [] unless callback.log?
-        callback.log.unshift! if callback.log.length > 100 # Rotate
-        callback.log.push do
-          status: res.statusCode
-          body: body
-        <- storeValue BUCKET_LIST, bucket, bucket_info
-        return
-
-    req.on 'error', (e) ->
-      callback.log = [] unless callback.log?
-      callback.log.unshift! if callback.log.length > 100 # Rotate
-      callback.log.push do
-        status: 0,
-        body: e.message
-      <- storeValue BUCKET_LIST, bucket, bucket_info
-  
-    req.write callback.data if callback.data?
-    req.end!
 
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
@@ -263,7 +232,7 @@ export setkey = (bucket, key, value, b, cb) ->
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
-  firecallbacks bucket, "setkey", key, value, b
+  callbacks.firecallbacks bucket, "setkey", key, value, b
   cb null
 
 setkey.errors =

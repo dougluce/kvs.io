@@ -131,7 +131,7 @@ describe "CLI full commands" ->
         'List keys in a bucket.'
         '  bucket: The bucket name.'
         '  keycontains: A substring to search for.'
-        '  b: B-value, passed on to postbacks'
+        '  b: B-value, passed on to callbacks'
         ''
         '>'
     done!
