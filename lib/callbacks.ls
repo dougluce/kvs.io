@@ -36,6 +36,35 @@ export firecallbacks = (bucket, func, ...args) ->
     req.write callback.data if callback.data?
     req.end!
 
+export register = (bucket, url, cb) ->
+  err, bucket_info <- commands.fetchValue commands.BUCKET_LIST, bucket
+  bucket_info = bucket_info.values[0]
+  if bucket_info.callbacks
+    callbacks = bucket_info.callbacks
+  else
+    callbacks = bucket_info.callbacks = {}
+  callbacks[url] = 
+    method: 'GET'
+    data: null
+    log: []
+  <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
+  cb null
+
+export list = (bucket, cb) ->
+  err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  bucket_info = result.values[0]
+  cb null, bucket_info.callbacks
+
+export remove = (bucket, url, cb) ->
+  err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
+  return cb err if err
+  return cb 'not found' if result.isNotFound
+  bucket_info = result.values[0]
+  delete bucket_info.callbacks[url]
+  <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
+  cb null
 didinit = null
 export init = (commands_module) ->
   commands := commands_module

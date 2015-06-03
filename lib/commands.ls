@@ -411,18 +411,7 @@ not reversible.  If you delete a key-value pair, it is gone forever.
 
 export register_callback = (bucket, url, b, cb) ->
   <- confirm_exists bucket, cb
-  err, bucket_info <- fetchValue BUCKET_LIST, bucket
-  bucket_info = bucket_info.values[0]
-  if bucket_info.callbacks
-    callbacks = bucket_info.callbacks
-  else
-    callbacks = bucket_info.callbacks = {}
-  callbacks[url] = 
-    method: 'GET'
-    data: null
-    log: []
-  <- storeValue BUCKET_LIST, bucket, bucket_info
-  cb null
+  callbacks.register bucket, url, cb
 
 register_callback.group = 'buckets'
 register_callback.params =
@@ -469,12 +458,7 @@ Macros supported:
 """
 
 export list_callbacks = (bucket, b, cb) ->
-  err, result <- fetchValue BUCKET_LIST, bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
-  bucket_info = result.values[0]
-  <- confirm_no_error err, bucket_info.callbacks, cb
-  list_callbacks bucket, url, b, cb
+  callbacks.list bucket, cb
 
 list_callbacks.group = 'buckets'
 list_callbacks.params =
@@ -503,13 +487,7 @@ list_callbacks.returnformatter = (w, callbacks) ->
     w key
 
 export delete_callback = (bucket, url, b, cb) ->
-  err, result <- fetchValue BUCKET_LIST, bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
-  bucket_info = result.values[0]
-  delete bucket_info.callbacks[url]
-  <- storeValue BUCKET_LIST, bucket, bucket_info
-  cb null
+  callbacks.remove bucket, url, cb
 
 delete_callback.group = 'buckets'
 delete_callback.params =
