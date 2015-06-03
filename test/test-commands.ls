@@ -413,7 +413,7 @@ describe "Commands" ->
           expect value, "value no match" .to.equal utf_string
           done!
   
-  describe.only '/listen' ->
+  describe '/listen' ->
     bucket = ""
 
     before (done) ->
@@ -434,6 +434,15 @@ describe "Commands" ->
       done!
 
     specify "Listen for an event", (done) ->
+      do
+        <- setTimeout _, 1
+        err <- commands.setkey bucket, "key", "value", null
+        expect err, "lfae err" .to.be.null
       err, data <- commands.listen bucket, null
-      expect data, 'lfae' .to.equal "Something happened!"
+      expect data, 'lfae' .to.eql do
+        bucket: bucket
+        event: 'setkey'
+        args: [ 'key', 'value', null ]
+      err <- commands.delkey bucket, "key", null
+      expect err, "lfae err2" .to.be.null
       done!

@@ -462,3 +462,31 @@ describe "API" ->
       expect err.message .to.equal 'Entry not found.'
       expect err.code .to.equal 'NotFoundError'
       done!
+
+  describe 'long poll listen' ->
+    bucket = null
+
+    before (done) ->
+      newbucket <- utils.markedbucket true
+      bucket := newbucket
+      done!
+  
+    specify 'Listen for key set' (done) ->
+      timeoutval = 100
+      if process.env.NODE_ENV == 'test'
+        @timeout 10000
+        timeoutval = 9000
+
+      do 
+        <- setTimeout _, timeoutval
+        err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahharf"
+        check_err err, res, "api.setkey #bucket #err", 201 
+      err, req, res, data <- client.get "/listen/#{bucket}"
+      check_err err, res, "api.listen #bucket #err", 200
+      data = JSON.parse data
+
+      expect data, "listen data" .to.eql do
+        bucket: bucket
+        event: "setkey"
+        args: ["wazoo", "zoowahharf", null]
+      done!

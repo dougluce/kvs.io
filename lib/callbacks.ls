@@ -3,8 +3,7 @@ require! {
   zmq: {socket}
 }
 
-sock = socket 'sub'
-
+pub_sock = {}
 commands = null
 
 export firecallbacks = (bucket, func, ...args) ->
@@ -13,6 +12,7 @@ export firecallbacks = (bucket, func, ...args) ->
   return if err # Probably oughta throw instead
   return if result.isNotFound # Probably oughta throw instead
   bucket_info = result.values[0]
+  sendmessage process.pid.toString!, {bucket: bucket, event: func, args: args}
   for let url, callback of bucket_info.callbacks
     req = http.request url, (res) ->
       body = ""
@@ -73,34 +73,44 @@ listeners = {}
 
 export listen = (bucket, cb) ->
   listeners.[]"#bucket".push cb
-  <- setTimeout _, 500
-  sock.emit 'message', "all", {bucket: bucket, event: "Something happened!"}
 
   # Register a callback.
   # that lists our IP and process ID.
   # Put the callback on a list.
   # ZMQ consumer will call when an event comes in.
 
-sendmessage = ->
-  # Producer.  Not for here.
-  sock.connect 'ipc:///tmp/kvsio.sock'
-  MSG = "yup"
-  sock.send ["123", MSG]
-  sock.send ["all", MSG]
-  sock.close!
+relay_events_to_listeners = ->
+  pid = process.pid.toString!
+  # consumes messages on-box
+  sub_sock = socket 'sub'
 
+  sub_sock.bindSync 'ipc:///tmp/kvsio.sock.#pid'
+  sub_sock.subscribe pid
+
+  sub_sock.on 'message', (topic, messageString) ->
+    message = JSON.parse messageString
+    if listeners[message.bucket]?
+      for listener in listeners[message.bucket]
+        listener null, message
+      x = delete listeners[message.bucket]
+
+
+sendmessage = (pid, message) ->
+  sendit = ->
+    pub_sock[pid].send [pid, JSON.stringify message]
+  if pub_sock[pid]? # Got it cached?
+    sendit!
+  else
+    pub_sock[pid] = socket 'pub' 
+    pub_sock[pid].connect 'ipc:///tmp/kvsio.sock.#pid'
+    setTimeout sendit, 100 # Totally annoying.
+    
 didinit = null
-export init = (commands_module) ->
+
+export init = (commands_module, cb) ->
   commands := commands_module
+
   return if didinit != null
   didinit := 1
-
-  # consumes messages on-box
-  sock.bindSync 'ipc:///tmp/kvsio.sock'
-  sock.subscribe 'all'
-  sock.subscribe process.pid.toString!
-
-  sock.on 'message', (topic, message) ->
-    for listener in listeners[message.bucket]
-      listener null, message.event
-    delete listeners[message.bucket]
+  
+  relay_events_to_listeners!
