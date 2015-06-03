@@ -56,6 +56,13 @@ export mark_bucket = (bucket, done) ->
   <- commands.storeValue BUCKETLIST, bucket, "Run on #{os.hostname!} at #now"
   done!
   
+export unmark_bucket = (bucket, done) ->
+  err <- riak_client.deleteValue do
+    * bucket: bucket
+      key: "testbucketinfo"
+  return done err if err
+  done!
+
 # Mark means to mark it for later deletion.
 # Set false for tests that will delete the bucket.
 export markedbucket = (mark, done) ->

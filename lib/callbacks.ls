@@ -1,6 +1,9 @@
 require! {
   http
+  zmq: {socket}
 }
+
+sock = socket 'sub'
 
 commands = null
 
@@ -65,8 +68,39 @@ export remove = (bucket, url, cb) ->
   delete bucket_info.callbacks[url]
   <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
   cb null
+
+listeners = {}
+
+export listen = (bucket, cb) ->
+  listeners.[]"#bucket".push cb
+  <- setTimeout _, 500
+  sock.emit 'message', "all", {bucket: bucket, event: "Something happened!"}
+
+  # Register a callback.
+  # that lists our IP and process ID.
+  # Put the callback on a list.
+  # ZMQ consumer will call when an event comes in.
+
+sendmessage = ->
+  # Producer.  Not for here.
+  sock.connect 'ipc:///tmp/kvsio.sock'
+  MSG = "yup"
+  sock.send ["123", MSG]
+  sock.send ["all", MSG]
+  sock.close!
+
 didinit = null
 export init = (commands_module) ->
   commands := commands_module
   return if didinit != null
   didinit := 1
+
+  # consumes messages on-box
+  sock.bindSync 'ipc:///tmp/kvsio.sock'
+  sock.subscribe 'all'
+  sock.subscribe process.pid.toString!
+
+  sock.on 'message', (topic, message) ->
+    for listener in listeners[message.bucket]
+      listener null, message.event
+    delete listeners[message.bucket]

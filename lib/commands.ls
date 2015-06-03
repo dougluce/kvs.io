@@ -512,3 +512,33 @@ delete_callback.description = """
 
 Remove the given URL from the list of bucket callbacks.
 """
+
+export listen = (bucket, b, cb) ->
+  <- confirm_exists bucket, cb
+  callbacks.listen bucket, cb
+
+listen.group = 'buckets'
+listen.params =
+  * name: 'bucket'
+    description: "The bucket to listen for activity on."
+    required: true
+  * bvalue
+listen.rest = ['get', '/listen/:bucket']
+listen.restpath = 'listen'
+listen.success = 200
+listen.errors =
+  * 'not found'
+  ...
+listen.summary = "Listen to a bucket for events."
+listen.description = """
+# Listen to a bucket for events
+
+Wait until an event comes in for the given bucket.  Once it does,
+inform me about it.
+
+This allows you to use long-polling to listen for a single event on a
+bucket.  If you want to capture multiple events, consider using the
+websocket version of this command.
+
+"""
+

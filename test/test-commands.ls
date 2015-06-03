@@ -413,3 +413,27 @@ describe "Commands" ->
           expect value, "value no match" .to.equal utf_string
           done!
   
+  describe.only '/listen' ->
+    bucket = ""
+
+    before (done) ->
+      newbucket <- utils.markedbucket true
+      bucket := newbucket
+      done!
+
+    after (done) ->
+      err <- utils.unmark_bucket bucket
+      err <- commands.delbucket bucket, null
+      expect err, "listen after" .to.be.null
+      done!
+
+    specify "Attempt listen on bad bucket.", (done) ->
+      err, data <- commands.listen "BARkaBARCUEKUDUFUFJ", null
+      expect err, 'alobb' .to.equal "not found"
+      expect data, 'alobbd' .to.be.undefined
+      done!
+
+    specify "Listen for an event", (done) ->
+      err, data <- commands.listen bucket, null
+      expect data, 'lfae' .to.equal "Something happened!"
+      done!
