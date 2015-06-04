@@ -207,3 +207,4 @@ to_destroy = ["T02ONB4xpAaCpMX0aj5r","JPNNXU3jiCMT7NbTNMos","50Nu3sUiK8j9d7uwlQJ
 prune_bucket_registry!
 #<- kill_various_buckets!
 #<- deleteall 'INEXPLICABLYSAMERANDOMDATA'
+#destroy_buckets ['SOMEKINDABADBUCKET', 'SUPERBADBUCKETHERE']
