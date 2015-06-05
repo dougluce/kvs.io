@@ -454,8 +454,10 @@ describe "API" ->
 
   describe 'mediatypes' ->
     specify 'should not bomb on no accept header' (done) ->
+      orig = client.headers.accept
       delete client.headers.accept
       err, req, res, data <- client.get "/setkey/SUPERBADBUCKETHERE/wazoo/zoowahhhh"
+      client.headers.accept = orig
       # no accept means non-json
       err = JSON.parse err.message
       expect data .to.equal '{"code":"NotFoundError","message":"Entry not found."}'
