@@ -7,6 +7,19 @@ require! {
 }
 
 describe 'Callbacks' ->
+  sandbox = null
+
+  before (done) ->
+    sandbox := sinon.sandbox.create!
+    if process.env.NODE_ENV != 'test'
+      utils.stub_riak_client sandbox
+    commands.init!
+    done!
+
+  after (done) ->
+    sandbox.restore!
+    done!
+
   describe 'Registered callbacks' ->
     bucket = callback_url = sandbox = null
 
@@ -22,14 +35,6 @@ describe 'Callbacks' ->
       server.listen 0
       <- server.on 'listening'
       callback_url := "http://localhost:#{server.address!port}"
-      sandbox := sinon.sandbox.create!
-      if process.env.NODE_ENV != 'test'
-        utils.stub_riak_client sandbox
-      commands.init!
-      done!
-
-    after (done) ->
-      sandbox.restore!
       done!
 
     beforeEach (done) ->
@@ -112,3 +117,4 @@ describe 'Callbacks' ->
                 {body: "Something /?second", status: 500}
             method: 'GET'
       done!
+

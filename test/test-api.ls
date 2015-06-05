@@ -488,5 +488,6 @@ describe "API" ->
       expect data, "listen data" .to.eql do
         bucket: bucket
         event: "setkey"
-        args: ["wazoo", "zoowahharf", null]
+        args: ["wazoo", "zoowahharf", ""]
+        data: ""
       done!

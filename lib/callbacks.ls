@@ -1,10 +1,16 @@
 require! {
-  http
+  needle
   zmq: {socket}
+  ip
 }
 
 pub_sock = {}
 commands = null
+listen_port = 80
+
+# When the API isn't on port 80.
+export set_listen_port = (port) ->
+  listen_port := port
 
 export firecallbacks = (bucket, func, ...args) ->
   <- process.nextTick
@@ -12,33 +18,20 @@ export firecallbacks = (bucket, func, ...args) ->
   return if err # Probably oughta throw instead
   return if result.isNotFound # Probably oughta throw instead
   bucket_info = JSON.parse result.values[0].getValue!
-  sendmessage process.pid.toString!, {bucket: bucket, event: func, args: args}
   for let url, callback of bucket_info.callbacks
-    req = http.request url, (res) ->
-      body = ""
-      res.setEncoding 'utf8'
-      res.on 'data', (chunk) ->
-        body += chunk
-      res.on 'end', ->
-        callback.log = [] unless callback.log?
-        callback.log.unshift! if callback.log.length > 100 # Rotate
-        callback.log.push do
-          status: res.statusCode
-          body: body
-        <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
-        return
-
-    req.on 'error', (e) ->
+    send_body =
+      event: func
+      args: args
+      data: callback.data
+    req = needle.request callback.method, url, send_body, (err, resp) ->
+      # TODO: Don't log if it's a listen callback!
       callback.log = [] unless callback.log?
       callback.log.unshift! if callback.log.length > 100 # Rotate
       callback.log.push do
-        status: 0,
-        body: e.message
+        status: if err then 0 else resp.statusCode
+        body: if err then err.message else resp.body
       <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
   
-    req.write callback.data if callback.data?
-    req.end!
-
 export register = (bucket, url, cb) ->
   err, bucket_info <- commands.fetchValue commands.BUCKET_LIST, bucket
   bucket_info = JSON.parse bucket_info.values[0].getValue!
@@ -63,8 +56,9 @@ export list = (bucket, cb) ->
 export remove = (bucket, url, cb) ->
   err, result <- commands.fetchValue commands.BUCKET_LIST, bucket
   return cb err if err
-  return cb 'not found' if result.isNotFound
+  return cb 'not found' if result.isNotFound 
   bucket_info = JSON.parse result.values[0].getValue!
+  return cb 'not found' unless bucket_info.callbacks[url]
   delete bucket_info.callbacks[url]
   <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
   cb null
@@ -72,12 +66,17 @@ export remove = (bucket, url, cb) ->
 listeners = {}
 
 export listen = (bucket, cb) ->
-  listeners.[]"#bucket".push cb
+#
+# If the listener drops, we'll want to remove their callback.
+#
+  listener = (listeners.[]"#bucket".push cb) - 1
+  pid = process.pid.toString!
+  <- register bucket, "http://#{ip.address!}:#listen_port/respond/#listener/#{bucket}/#pid"
 
-  # Register a callback.
-  # that lists our IP and process ID.
-  # Put the callback on a list.
-  # ZMQ consumer will call when an event comes in.
+export respond = (req, res) ->
+  # MAKE SURE IT'S FROM AN ALLOWED NETBLOCK!!
+  sendmessage req.params.pid, req.params
+  res.send "OK"
 
 relay_events_to_listeners = ->
   pid = process.pid.toString!
@@ -89,11 +88,13 @@ relay_events_to_listeners = ->
 
   sub_sock.on 'message', (topic, messageString) ->
     message = JSON.parse messageString
+    delete message.pid
+    delete message.listener # TODO: May not always want to do this...
     if listeners[message.bucket]?
       for listener in listeners[message.bucket]
         listener null, message
-      x = delete listeners[message.bucket]
-
+        <- remove message.bucket, "http://#{ip.address!}:#listen_port/respond/#listener/#{message.bucket}/#pid"
+      delete listeners[message.bucket]
 
 sendmessage = (pid, message) ->
   sendit = ->

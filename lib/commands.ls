@@ -441,7 +441,7 @@ Macros supported:
 
 + %o API operation
   Will be one of: 
-  newbucket, listkeys, delbucket, setkey, newkey, getkey, delkey, register_callback
+  newbucket, listkeys, delbucket, setkey, newkey, getkey, delkey, register_callback, unregister_callback
 + %p operation parameters
   newbucket: bucket -- bucket created
   listkeys: bucket -- bucket keys are listed within

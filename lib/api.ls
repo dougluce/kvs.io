@@ -5,6 +5,7 @@ require! {
   'bunyan-prettystream': PrettyStream
   ipware
   './commands'
+  './callbacks'
   './cli'
   fs
   npid
@@ -253,6 +254,7 @@ export init = (server, logobj) ->
   unless is_prod
     if server.address!?port
       host = 'localhost:' + that
+      callbacks.set_listen_port that
   server.get "/swagger/resources.json" (req, res) ->
     res.send swagger <<< host: host
 
@@ -267,6 +269,10 @@ export init = (server, logobj) ->
 
   server.get /^\/docs.*/ restify.serveStatic do
     directory: path.join path.resolve __dirname, '..', 'swagger'
+
+  # For callbacks
+  server.get '/respond/:listener/:bucket/:pid' callbacks.respond
+
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
