@@ -271,7 +271,7 @@ export init = (server, logobj) ->
     directory: path.join path.resolve __dirname, '..', 'swagger'
 
   # For callbacks
-  server.get '/respond/:listener/:bucket/:pid' callbacks.respond
+  server.post '/respond/:listener/:bucket/:pid' callbacks.respond
 
   req, res, route, err <- server.on 'uncaughtException' 
   throw err

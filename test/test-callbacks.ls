@@ -55,8 +55,8 @@ describe 'Callbacks' ->
       err, callbacks <- commands.list_callbacks bucket, null
       expect err,err .to.be.null
       expect callbacks, 'slc' .to.eql do
-        'http://localhost/one': { data: null, log: [], method: 'GET' }
-        'http://localhost/two': { data: null, log: [], method: 'GET' }
+        'http://localhost/one': { data: null, log: [], method: 'POST' }
+        'http://localhost/two': { data: null, log: [], method: 'POST' }
       done!
 
     specify 'should delete a callback' (done) ->
@@ -67,12 +67,12 @@ describe 'Callbacks' ->
       err <- commands.delete_callback bucket, 'http://localhost/four', null
       err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sdac' .to.eql do
-        'http://localhost/three': { data: null, log: [], method: 'GET' }
+        'http://localhost/three': { data: null, log: [], method: 'POST' }
         ...
       done!
 
     specify 'should fire and report on callback' (done) ->
-      timeout_scale = 10
+      timeout_scale = 100
       if process.env.NODE_ENV == 'test'
         timeout_scale := 200
       err <- commands.register_callback bucket, callback_url + "?morphal", null
@@ -81,7 +81,7 @@ describe 'Callbacks' ->
       <- setTimeout _, timeout_scale
       err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sfaroc' .to.eql do
-        * "#{callback_url}?morphal": { data: null, log: [{body: "Something /?morphal", status: 200}], method: 'GET' }
+        * "#{callback_url}?morphal": { data: null, log: [{body: "Something /?morphal", status: 200}], method: 'POST' }
         ...
       done!
 
@@ -109,12 +109,12 @@ describe 'Callbacks' ->
             log:
               * {body: "Something /?first", status: 200}
                 {body: "Something /?first", status: 500}
-            method: 'GET'
+            method: 'POST'
           "#{callback_url}?second":
             data: null
             log:
               * {body: "Something /?second", status: 200}
                 {body: "Something /?second", status: 500}
-            method: 'GET'
+            method: 'POST'
       done!
 

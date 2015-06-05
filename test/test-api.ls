@@ -185,7 +185,7 @@ describe "API" ->
       done!
   
     specify 'should fail on bad bucket' (done) ->
-      err, req, res, data <-client.get "/getkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/mykey"
+      err, req, res, data <- client.get "/getkey/4FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD/mykey"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
       done!
@@ -228,7 +228,7 @@ describe "API" ->
       done!
   
     specify 'should fail on bad bucket' (done) ->
-      err, req, res, data <-client.get "/delkey/1WKEcUzO2EHlgtqoUzhD/mykey"
+      err, req, res, data <- client.get "/delkey/1WKEcUzO2EHlgtqoUzhD/mykey"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
       done!
@@ -331,7 +331,7 @@ describe "API" ->
       done!
   
     specify 'should fail on unknown bucket' (done) ->
-      err, req, res, data <-client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
+      err, req, res, data <- client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
       done!
@@ -480,7 +480,7 @@ describe "API" ->
       do 
         <- setTimeout _, timeoutval
         err, req, res, data <- client.get "/setkey/#{bucket}/wazoo/zoowahharf"
-        check_err err, res, "api.setkey #bucket #err", 201 
+        check_err err, res, "api.setkey #bucket #err", 201
       err, req, res, data <- client.get "/listen/#{bucket}"
       check_err err, res, "api.listen #bucket #err", 200
       data = JSON.parse data
@@ -490,4 +490,39 @@ describe "API" ->
         event: "setkey"
         args: ["wazoo", "zoowahharf", ""]
         data: ""
+      done!
+
+  describe '/listen' ->
+    bucket = ""
+
+    before (done) ->
+      newbucket <- utils.markedbucket true
+      bucket := newbucket
+      done!
+
+    after (done) ->
+      err <- utils.unmark_bucket bucket
+      err, req, res, data <- client.get "/delbucket/#{bucket}"
+      expect err, "listen after" .to.be.null
+      done!
+
+    specify "Attempt listen on bad bucket" (done) ->
+      err, req, res, data <- client.get "/listen/BARkaBARCUEKUDUFUFJ"
+      expect err.message, 'alobb' .to.equal "Entry not found."
+      expect data, 'alobbd' .to.equal "Entry not found."
+      done!
+
+    specify "Listen for an event", (done) ->
+      do
+        <- setTimeout _, 1
+        <- api_setkey bucket, _, "key", "value"
+      err, req, res, data <- client.get "/listen/#bucket/"
+      check_err err, res, 'lfae err', 200
+      expect JSON.parse data, 'lfae' .to.eql do
+        bucket: bucket
+        data: ""
+        event: 'setkey'
+        args: [ 'key', 'value', "" ]
+      err, req, res, data <- client.get "/delkey/#bucket/key"
+      check_err err, res, 'lfae err2', 204
       done!

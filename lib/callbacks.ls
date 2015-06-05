@@ -40,7 +40,7 @@ export register = (bucket, url, cb) ->
   else
     callbacks = bucket_info.callbacks = {}
   callbacks[url] = 
-    method: 'GET'
+    method: 'POST'
     data: null
     log: []
   <- commands.storeValue commands.BUCKET_LIST, bucket, bucket_info
