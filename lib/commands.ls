@@ -128,10 +128,7 @@ newbucket.description = """
 # Create a new bucket.
 
 kvs.io works on the basis of buckets.  All keys must be collected into
-buckets.  A bucket's name is a 20-character random string.  This
-string is created via the Yarrow algorithm using 256-bit AES seeded by
-the Intel Secure Key hardware randomness generator.  It is checked
-against all existing bucket names to ensure there are no collisions.
+buckets.  A bucket's name is a 20-character random string.  
 
 ## Security of your bucket
 
@@ -324,9 +321,7 @@ This will generate a new key and store the given value under that key.
 
 The new key is guaranteed not to already exist.
 
-The key is created as a random 20-character string using the Yarrow
-algorithm with 256-bit AES seeded by the Intel Secure Key hardware
-randomness generator.
+The key is created as a random 20-character string.
 
 ## Limitations
 
