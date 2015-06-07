@@ -7,7 +7,11 @@ require! {
   bunyan
 }
 
-logger = null
+global_facts = logger = null
+
+# In-memory per-socket information
+
+socket_facts = {}
 
 is_prod = process.env.NODE_ENV == 'production'
 
@@ -22,7 +26,7 @@ shortcuts =
   db: 'delbucket'
   admin: 'root'
 
-facts = cli_commands = null
+cli_commands = null
 
 #
 # Record my own IP addresses.
@@ -47,33 +51,6 @@ for dev, addresses of os.networkInterfaces!
 
 my_ip := my_ip.join ', '
 
-accept_web_connection = (req, socket, head) ->
-  if req.url == 'cli'
-    facts :=
-      info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
-      ip: req.connection.remoteAddress
-    facts['fd'] = if socket._handle
-      socket._handle?fd
-    else
-      "unknown FD"
-    unless is_prod
-      facts['test'] = "env #{process.env.NODE_ENV}"
-    logger.info facts, "connect"
-    return cli_open socket
-  socket.end!
-
-accept_telnet_connection = (socket) ->
-  socket.setNoDelay!
-  fd = socket._handle?fd
-  facts :=
-    info: "Via Telnet [#{os.hostname!} #my_ip]"
-    ip: socket.remoteAddress
-    fd: fd
-  unless is_prod
-    facts['test'] = "env #{process.env.NODE_ENV}"
-  logger.info facts, "connect"
-  cli_open socket
-
 #
 # Initialize our commands.  This allows tests to send in different
 # command objects.
@@ -96,15 +73,6 @@ export start_telnetd = (port = 7002) ->
   telnet_server.listen port
   logger.info "Telnet server started on #port"
   return telnet_server
-
-#
-# Given a Restify http server, listen to the connect event
-# so we can get sessions from that.
-#
-
-export start_upgrader = (server) ->
-  # For Web version
-  server.server.on 'connect' accept_web_connection
 
 module.exports.banner = banner = "Welcome to kvs.io.  Type 'help' for help."
 
@@ -251,32 +219,40 @@ function define_locals
 #
 # Fill in the facts if I have them.
 #
-pre_resolve = (params) ->
+pre_resolve = (socket, params) ->
+  fd = socket._handle?fd
   newparams = []
   optionals = 0
   for param in params
-    newparams.push facts[param['name']]
+    newparams.push socket_facts[fd][param['name']]
     optionals++ if not param['required']
   return [optionals, newparams]
+
+export register_facts = (socket, facts) ->
+  fd = socket._handle?fd
+  socket_facts[fd] = facts
+  
+add_facts = (socket, facts) ->
+  fd = socket._handle?fd
+  socket_facts[fd] <<< facts
 
 #
 # Parse a line of input for a command
 #
 
 do_parse = (line, rl, socket, cb) ->
-  logger.info {fd: socket._handle?fd}, "cli: #line"
-  w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
-  facts["w"] = w
-  facts["socket"] = socket
-  facts["rl"] = rl
+  fd = socket._handle?fd
+  logger.info {fd: fd}, "cli: #line"
   [first, ...rest] = line / ' '
   first = shortcuts[first] ? first
   if first == ""
      return rl.prompt!
   cmd = cli_commands[first]
+  w = socket_facts[fd].w
+
   if cmd?params # There's a command!
     # Fill params in with facts
-    [optcount, params] = pre_resolve that
+    [optcount, params] = pre_resolve socket, that
     # Fill in with the rest of what we know.
     pp = [p ? rest.shift! for p in params]
     if rest.length > 0 and not cmd.variable
@@ -302,12 +278,13 @@ do_parse = (line, rl, socket, cb) ->
     w "That command is unknown."
     rl.prompt!
   
-function cli_open socket
+export cli_open = (socket) ->
   rl = null
   fd = socket._handle?fd
 
   socket.on 'end' ->
     logger.info {fd: fd}, "lost connection (end)"
+    delete socket_facts[fd]
     socket.destroy!
   socket.on 'close' ->
     logger.info {fd: fd}, "lost connection (close)"
@@ -326,3 +303,22 @@ function cli_open socket
     ..output.write banner + "\r\n"
     ..prompt!
 
+  w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
+  facts = 
+    w: w
+    socket: socket
+    rl: rl
+  add_facts socket, facts
+
+accept_telnet_connection = (socket) ->
+  socket.setNoDelay!
+  facts =
+    info: "Via Telnet [#{os.hostname!} #my_ip]"
+    ip: socket.remoteAddress
+    fd: socket._handle?fd
+  unless is_prod
+    facts['test'] = "env #{process.env.NODE_ENV}"
+  logger.info facts, "connect"
+  facts['socket'] = socket
+  register_facts socket, facts
+  cli_open socket

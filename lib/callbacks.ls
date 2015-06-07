@@ -24,6 +24,8 @@ export firecallbacks = (bucket, func, ...args) ->
       args: args
       data: callback.data
     req = needle.request callback.method, url, send_body, (err, resp) ->
+      console.log err if err
+      # NEED to requeeue errors!!!
       # TODO: Don't log if it's a listen callback!
       callback.log = [] unless callback.log?
       callback.log.unshift! if callback.log.length > 100 # Rotate
@@ -83,7 +85,7 @@ relay_events_to_listeners = ->
   # consumes messages on-box
   sub_sock = socket 'sub'
 
-  sub_sock.bindSync 'ipc:///tmp/kvsio.sock.#pid'
+  sub_sock.bindSync "ipc:///tmp/kvsio.sock.#pid"
   sub_sock.subscribe pid
 
   sub_sock.on 'message', (topic, messageString) ->
@@ -103,7 +105,7 @@ sendmessage = (pid, message) ->
     sendit!
   else
     pub_sock[pid] = socket 'pub' 
-    pub_sock[pid].connect 'ipc:///tmp/kvsio.sock.#pid'
+    pub_sock[pid].connect "ipc:///tmp/kvsio.sock.#pid"
     setTimeout sendit, 100 # Totally annoying.
     
 didinit = null

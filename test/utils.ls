@@ -161,42 +161,49 @@ export startServer = (port, done) ->
     ..run runServer
 
 export class Connector
-  buffer = ''
-  count = 0
-  cb = client = null
-  
   (host, port, connect_cb) ->
-    client := net.connect port, '127.0.0.1', ->
-      buffer := ''
-      connect_cb client
-    client.on 'end', (data) ->
-      lines = buffer.split /\r\n/
-      cb lines.splice 0, count
-    client.on 'data', (data) ->
-      buffer += data.toString!
-      lines = buffer.split /\r\n/
-      if lines.length >= count and (lines[lines.length-1].length > 0)
-        ret = lines.splice 0, count
-        buffer := lines.join "\r\n"
-        cb ret
+    @client := net.connect port, '127.0.0.1', ->
+      @connect_init
+      connect_cb @client
+    @client.on 'end', @connect_end
+    @client.on 'data', @connect_data
 
-  end: ->
-    client.end!
+  buffer: ''
+  count: 0
+  cb: null
+  client: null
 
-  wait_end: (cb) ->
-    client.on 'end' cb
+  connect_init: (connect_cb) ~>
+    @buffer := ''
 
-  wait: (new_count, new_cb) ->
-    cb := new_cb
-    count := new_count
+  connect_data: (data) ~>
+    @buffer += data.toString!
+    lines = @buffer.split /\r\n/
+    if lines.length >= @count and (lines[lines.length-1].length > 0)
+      ret = lines.splice 0, @count
+      @buffer := lines.join "\r\n"
+      @cb ret
 
-  send: (data, new_count, new_cb) ->
-    cb := new_cb
-    count := new_count
-    client.write data + "\r"
+  connect_end: (data) ~>
+    lines = @buffer.split /\r\n/
+    @cb lines.splice 0, @count
 
-  rest: (cb) ->
-    lines = buffer.split /\r\n/
-    buffer := ''
-    cb lines
-  
+  end: ~>
+    @client.end!
+
+  wait_end: (callback) ~>
+    @client.on 'end' callback
+
+  wait: (new_count, new_cb) ~>
+    @cb := new_cb
+    @count := new_count
+
+  send: (data, new_count, new_cb) ~>
+    @cb := new_cb
+    @count := new_count
+    @client.write data + "\r"
+
+  rest: (callback) ~>
+    lines = @buffer.split /\r\n/
+    @buffer := ''
+    callback lines

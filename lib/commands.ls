@@ -523,7 +523,7 @@ delete_callback.errors =
   ...
 delete_callback.summary = "Delete a bucket callback."
 delete_callback.description = """
-# Delete a bucket callback."
+# Delete a bucket callback.
 
 Remove the given URL from the list of bucket callbacks.
 """
@@ -554,3 +554,5 @@ this call returns with the event type and parameters.
 This allows the use of long-polling to listen for a single event on a
 bucket.
 """
+listen.returnformatter = (w, message) ->
+  w "Received #{JSON.stringify message}"

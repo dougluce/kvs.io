@@ -305,6 +305,24 @@ bunyan.getLogger = (name) ->
 
   log
 
+handle_upgrade = (req, socket, head) ->
+  if req.url == 'cli' # Asked for a CLI connection.
+    facts =
+      info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
+      ip: req.connection.remoteAddress
+      socket: socket
+    facts['fd'] = if socket._handle
+      socket._handle?fd
+    else
+      "unknown FD"
+    unless is_prod
+      facts['test'] = "env #{process.env.NODE_ENV}"
+    logger.info facts, "connect"
+    cli.register_facts socket, facts
+    return cli.cli_open socket
+#  if req.url == 'ws' # Asked for a regular websocket
+  socket.end! # Not a proper upgrade, give it up.
+
 export standalone = ->
   if is_prod
     try
@@ -338,7 +356,7 @@ export standalone = ->
   cli.init! # Fire up the CLI system.
   cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
 
-  cli.start_upgrader server # Allow upgrades to CLI
+  server.server.on 'connect' handle_upgrade
 
   logger.info '%s listening at %s', server.name, server.url
 
@@ -359,7 +377,7 @@ export standalone = ->
     init secure_server
 
     <- secure_server.listen if is_prod then 443 else 8081
-    cli.start_upgrader secure_server # Allow upgrades to CLI
+    secure_server.server.on 'connect' handle_upgrade
     logger.info '%s listening at %s', secure_server.name, secure_server.url
 
 if !module.parent # Run stand-alone
