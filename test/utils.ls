@@ -173,6 +173,9 @@ export class Connector
   cb: null
   client: null
 
+  close: ~>
+    @client.end!
+
   connect_init: (connect_cb) ~>
     @buffer := ''
 

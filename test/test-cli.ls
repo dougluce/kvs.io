@@ -202,20 +202,26 @@ describe "CLI rodeo" ->
     clients.push d
     return d
 
-  after (done) ->
-    @timeout 100000 if process.env.NODE_ENV == 'test'
+  afterEach (done) ->
     async.each clients, (d, cb)->
       data <- d.send 'quit', 1
       expect data .to.eql ['Disconnecting.']
-      cb!
-    , (a, b) ->
-      <- telnet_server.close
-      <- utils.cull_test_buckets
-      client.close!
-      json_client.close!
-      <- server.close
-      sandbox.restore!
+      d.client.on 'close' ->
+        cb!
+      d.close!
+    , ->
+      clients := []
       done!
+
+  after (done) ->
+    @timeout 100000 if process.env.NODE_ENV == 'test'
+    <- telnet_server.close
+    <- utils.cull_test_buckets
+    client.close!
+    json_client.close!
+    <- server.close
+    sandbox.restore!
+    done!
 
   specify "Fire off 10 simple transactions" (done) ->
     err, clis <- async.times 10, new_cli
@@ -238,7 +244,7 @@ describe "CLI rodeo" ->
     
   specify "A whole lotta listening" (done) ->
     lbuckets = {}
-    err, listeners <- async.times 5, new_cli
+    err, listeners <- async.times 10, new_cli
     expect err, "awll" .to.be.undefined
     err, results <- async.map listeners, (listener, cb) ->
       data <- listener.send 'newbucket', 2

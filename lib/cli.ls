@@ -69,7 +69,7 @@ export init = (new_cli_commands = commands) ->
 export start_telnetd = (port = 7002) ->
   # For telnet version
   telnet_server = net.createServer accept_telnet_connection
-  telnet_server.maxConnections = 10;
+  telnet_server.maxConnections = 20;
   telnet_server.listen port
   logger.info "Telnet server started on #port"
   return telnet_server
