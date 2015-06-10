@@ -7,6 +7,7 @@ require! {
   './commands'
   './callbacks'
   './cli'
+  './websocket': {accept_upgrade}
   fs
   npid
   'media-type'
@@ -247,9 +248,12 @@ export init = (server, logobj) ->
   server.use restify.queryParser!
   server.use restify.acceptParser server.acceptable
   server.use restify.CORS!
+
   commands.init!
+  
   makeroutes server
-  server.get /^(|\/|\/index.html|\/favicon.ico|\/w.*)$/ web_proxy
+  server.get /^(|\/|\/index.html|\/favicon.ico|\/w\/|\/w|\/w\/.*)$/ web_proxy
+  
   host = 'kvs.io'
   unless is_prod
     if server.address!?port
@@ -273,6 +277,8 @@ export init = (server, logobj) ->
   # For callbacks
   server.post '/respond/:listener/:bucket/:pid' callbacks.respond
 
+  server.on 'upgrade', accept_upgrade
+  
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
@@ -305,7 +311,7 @@ bunyan.getLogger = (name) ->
 
   log
 
-handle_upgrade = (req, socket, head) ->
+handle_connect = (req, socket, head) ->
   if req.url == 'cli' # Asked for a CLI connection.
     facts =
       info: "Via CONNECT cli request [#{os.hostname!} #my_ip]"
@@ -320,8 +326,7 @@ handle_upgrade = (req, socket, head) ->
     logger.info facts, "connect"
     cli.register_facts socket, facts
     return cli.cli_open socket
-#  if req.url == 'ws' # Asked for a regular websocket
-  socket.end! # Not a proper upgrade, give it up.
+  socket.end! # Not a proper connect, give it up.
 
 export standalone = ->
   if is_prod
@@ -356,7 +361,7 @@ export standalone = ->
   cli.init! # Fire up the CLI system.
   cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
 
-  server.server.on 'connect' handle_upgrade
+  server.server.on 'connect' handle_connect
 
   logger.info '%s listening at %s', server.name, server.url
 
@@ -377,7 +382,7 @@ export standalone = ->
     init secure_server
 
     <- secure_server.listen if is_prod then 443 else 8081
-    secure_server.server.on 'connect' handle_upgrade
+    secure_server.server.on 'connect' handle_connect
     logger.info '%s listening at %s', secure_server.name, secure_server.url
 
 if !module.parent # Run stand-alone

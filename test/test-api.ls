@@ -410,7 +410,7 @@ describe "API" ->
           key_number = Math.floor(keys.length * Math.random())
           tag = keys.splice(key_number,1)
           utf_string = utfCases[tag]
-          case_runner(tag, utf_string)
+          case_runner tag, utf_string
   
     describe 'gets' ->
       driver utf_case_get
