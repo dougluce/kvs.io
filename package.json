@@ -35,7 +35,7 @@
     "request": "^2.55.0",
     "restify": "^3.0.2",
     "swagger-tools": "^0.8.7",
-    "watershed": "^0.3.0",
+    "ws": "^0.7.2",
     "zmq": "^2.11.1"
   },
   "devDependencies": {
