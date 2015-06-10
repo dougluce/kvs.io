@@ -210,9 +210,8 @@ describe 'Websockets' ->
         bucket: bucket
       data <- ws.get
       data = JSON.parse data
-      expect data .to.eql do
-        result:
-          "testbucketinfo"
+      expect data.result .to.have.members do
+        * "testbucketinfo"
           "the"
           "gods"
           "will"
@@ -220,7 +219,10 @@ describe 'Websockets' ->
           "#{basekey}h"   
           "#{basekey}"
           "clubbed"
-        success: true
+      expect data.success .to.be.true
+      expect data .to.have.all.keys do
+        "result"
+        "success"
       done!
 
   describe 'utf-8' ->
