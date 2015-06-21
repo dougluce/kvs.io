@@ -172,33 +172,35 @@ export additional_facts = ->
     facts['test'] = "env #{process.env.NODE_ENV}"
   facts
 
+makeHandler = (command) ->
+  (req, res, next) ->
+    params = {} <<<< req.params
+    if command.mapparams
+      for key in Object.keys command.mapparams
+        if params[key]
+          params[command.mapparams[key]] = params[key]
+          delete params[key]
+    facts = params with 
+      info: req.headers
+      ip: ipware!get_ip req
+    facts <<< exports.additional_facts!
+    params = resolve req, command.params, facts
+    unless params
+      return res.send 400, "params incorrect"
+    # The callback.
+    params.push (err, result) ->
+      <- handle_error err, next
+      res.send command.success, result
+      params.pop! # Remove callback for reporting.
+      logger.info params, "api: name"
+    command.apply null, params
+
 makeroutes = (server) ->
   for let commandname, command of commands when command.params
     # The route handler.
-    handler = (req, res, next) ->
-      params = {} <<<< req.params
-      if command.mapparams
-        for key in Object.keys command.mapparams
-          if params[key]
-            params[command.mapparams[key]] = params[key]
-            delete params[key]
-      facts = params with 
-        info: req.headers
-        ip: ipware!get_ip req
-      facts <<< exports.additional_facts!
-      params = resolve req, command.params, facts
-      unless params
-        return res.send 400, "params incorrect"
-      # The callback.
-      params.push (err, result) ->
-        <- handle_error err, next
-        res.send command.success, result
-        params.pop! # Remove callback for reporting.
-        logger.info params, "api: name"
-      command.apply commands, params
-
     # Simple form.
     getUrl = "/#commandname"
+    handler = makeHandler command
     for param in command.params
       continue if param['x-private']
       unless param['required']
