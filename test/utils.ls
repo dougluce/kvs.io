@@ -115,6 +115,10 @@ stub_riak =
 
 export stub_riak_client = (sinon) ->
   sinon.stub Riak, "Client" ->
+    listBuckets: (options, cb) ->
+      cb null do
+        buckets: Object.keys stub_riak
+        done: true
     fetchValue: (options, cb) ->
       {bucket, key} = options
       unless stub_riak[bucket]?[key]?
@@ -141,6 +145,9 @@ export stub_riak_client = (sinon) ->
     deleteValue: (options, cb) ->
       {bucket, key} = options
       delete stub_riak[bucket][key] if stub_riak[bucket]
+      len = Object.keys(stub_riak[bucket]).length
+      if Object.keys(stub_riak[bucket]).length < 1
+        delete stub_riak[bucket]
       cb null, true
 
 export startServer = (port, done) ->
