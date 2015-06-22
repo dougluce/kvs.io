@@ -30,7 +30,8 @@ describe "Commands" ->
   
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
-      _, err, newbucket <- commands.newbucket "Info string", "192.231.221.256", "scab test", null
+      user, err, newbucket <- commands.newbucket "Info string", "192.231.221.256", "scab test", null
+      expect user, "newbucket user" .to.equal newbucket
       expect err, "newbucket #err" .to.be.null
       expect newbucket .to.match /^[0-9a-zA-Z]{20}$/
       <- utils.mark_bucket newbucket
@@ -39,7 +40,8 @@ describe "Commands" ->
     specify 'crypto error on bucket creation' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb "Crypto error"
-      _, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", "ceobc test", null
+      user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", "ceobc test", null
+      expect user,"newbucket cryptoerror" .to.be.null
       expect err .to.equal 'Crypto error'
       expect newbucket .to.be.undefined
       done!
@@ -47,12 +49,15 @@ describe "Commands" ->
     specify 'Bad bucket creation error' sinon.test (done) ->
       @stub crypto, "randomBytes", (count, cb) ->
         cb null, "INEXPLICABLYSAMERANDOMDATA"
-      _, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test', null
+      user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test', null
+      expect user,"bbce" .to.equal newbucket
       expect err .to.equal null
       expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
       
-      _, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test 2', null
+      user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test 2', null
+      expect user,"bbce2" .to.equal newbucket
       expect err, err .to.equal 'bucket already exists'
+      expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
       done!
   
   describe '/setkey' ->
@@ -64,46 +69,52 @@ describe "Commands" ->
       done!
   
     specify 'should set a key' (done) ->
-      _, err <- commands.setkey bucket, "whatta", "maroon", null
-      expect err,err .to.be.null
+      user, err <- commands.setkey bucket, "whatta", "maroon", null
+      expect user, 'ssak2' .to.equal bucket
+      expect err,'ssak' .to.be.null
       done!
 
     specify 'should fail on bad bucket' (done) ->
-      _, err <- commands.setkey "SOMEKINDABADBUCKET", "whatta", "maroon", null
-      expect err .to.equal 'not found'
+      user, err <- commands.setkey "SOMEKINDABADBUCKET", "whatta", "maroon", null
+      expect user, 'sfabb2' .to.equal "SOMEKINDABADBUCKET"
+      expect err, 'sfabb' .to.equal 'not found'
       done!
   
     describe "only the first #{KEYLENGTH} key chars count. " (done) ->
       basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
   
       specify 'Add one to get the full length' (done) ->
-        _, err <- commands.setkey bucket, basekey + "EXTRASTUFF", 'verlue', null
-        expect err,err .to.be.null
-        _, err, value <- commands.getkey bucket, basekey + "E", null
-        expect err,err .to.be.null
+        user, err <- commands.setkey bucket, basekey + "EXTRASTUFF", 'verlue', null
+        expect user, 'aotgtfl' .to.equal bucket
+        expect err,'aotgtfl2' .to.be.null
+        user, err, value <- commands.getkey bucket, basekey + "E", null
+        expect user, 'aotgtfl3' .to.equal bucket
+        expect err,'aotgtfl3' .to.be.null
         expect value .to.equal "verlue"
         done!
   
       specify 'Add a bunch, but only the first is going to count.' (done) ->
         timeout = 0
         timeout = 100 if process.env.NODE_ENV == 'test'
-        _, err <- commands.setkey bucket, basekey + "EJOINDER", 'verlue', null
+        user, err <- commands.setkey bucket, basekey + "EJOINDER", 'verlue', null
         <- setTimeout _, timeout
-        _, err <- commands.setkey bucket, basekey + "EYUPNO", 'varloe', null
+        user, err <- commands.setkey bucket, basekey + "EYUPNO", 'varloe', null
         <- setTimeout _, timeout
-        _, err <- commands.setkey bucket, basekey + "EYUPYUP", 'verlux', null
+        user, err <- commands.setkey bucket, basekey + "EYUPYUP", 'verlux', null
         <- setTimeout _, timeout
         expect err,err .to.be.null
 
-        _, err, value <- commands.getkey bucket, basekey + "EYUPMAN", null
-        expect err,err .to.be.null
+        user, err, value <- commands.getkey bucket, basekey + "EYUPMAN", null
+        expect user, 'aabbotfigtc' .to.equal bucket
+        expect err, 'aabbotfigtc2' .to.be.null
         expect value .to.equal "verlux"
         done!
   
       specify 'Getting the original base key (one too short) should fail.' (done) ->
-        _, err <- commands.setkey bucket, basekey + "PARSIMONIC", 'verlux', null
-        _, err, value <- commands.getkey bucket, basekey, null
-        expect err .to.equal 'not found'
+        user, err <- commands.setkey bucket, basekey + "PARSIMONIC", 'verlux', null
+        user, err, value <- commands.getkey bucket, basekey, null
+        expect user, 'gtobkotssf' .to.equal bucket
+        expect err, 'gtobkotssf2' .to.equal 'not found'
         expect value .to.be.undefined
         done!
   
@@ -112,19 +123,21 @@ describe "Commands" ->
       key = "setkey-valuetest"
   
       specify 'Add one to get the full length' (done) ->
-        _, err <- commands.setkey bucket, key, "#{basevalue}E" , null
-        _, err, value <- commands.getkey bucket, key, null
+        user, err <- commands.setkey bucket, key, "#{basevalue}E" , null
+        user, err, value <- commands.getkey bucket, key, null
+        expect user, 'aotgtfl' .to.equal bucket
+        expect err, 'aotgtfl2' .to.be.null
         expect value.length .to.equal VALUELENGTH
         expect value .to.equal "#{basevalue}E"
-        expect err, err .to.be.null
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
-        _, err <- commands.setkey bucket, key, "#{basevalue}EECHEEWAMAA", null
-        _, err, value <- commands.getkey bucket, key, null
+        user, err <- commands.setkey bucket, key, "#{basevalue}EECHEEWAMAA", null
+        user, err, value <- commands.getkey bucket, key, null
+        expect user, 'vtligc' .to.equal bucket
+        expect err, 'vtligc2' .to.be.null
         expect value.length .to.equal VALUELENGTH
         expect value.slice -10 .to.equal 'vvvvvvvvvE'
-        expect err, err .to.be.null
         done!
 
   describe '/newkey' ->
@@ -136,13 +149,15 @@ describe "Commands" ->
       done!
   
     specify 'should create a new key' (done) ->
-      _, err, key <- commands.newkey bucket, "it's some maroon", null
-      expect err,err .to.be.null
+      user, err, key <- commands.newkey bucket, "it's some maroon", null
+      expect user, 'scank' .to.equal bucket
+      expect err, 'scank2' .to.be.null
       expect key .to.match /^[0-9a-zA-Z]{20}$/
       done!
 
     specify 'should fail on bad bucket' (done) ->
-      _, err, key <- commands.newkey "SOMEKINDABADBUCKET", "nonmaroon", null
+      user, err, key <- commands.newkey "SOMEKINDABADBUCKET", "nonmaroon", null
+      expect user .to.equal "SOMEKINDABADBUCKET"
       expect err .to.equal 'not found'
       expect key .to.be.undefined
       done!
@@ -151,17 +166,20 @@ describe "Commands" ->
       basevalue = Array VALUELENGTH .join 'v' # VALUELENGTH-1 length string
   
       specify 'Add one to get the full length' (done) ->
-        _, err, key <- commands.newkey bucket, "#{basevalue}E" , null
+        user, err, key <- commands.newkey bucket, "#{basevalue}E" , null
+        expect user .to.equal bucket
         expect key .to.match /^[0-9a-zA-Z]{20}$/
-        _, err, value <- commands.getkey bucket, key, null
+        user, err, value <- commands.getkey bucket, key, null
+        expect user .to.equal bucket
         expect value.length .to.equal VALUELENGTH
         expect value .to.equal "#{basevalue}E"
         expect err, err .to.be.null
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
-        _, err, key <- commands.newkey bucket, "#{basevalue}EECHEEWAMAA", null
-        _, err, value <- commands.getkey bucket, key, null
+        user, err, key <- commands.newkey bucket, "#{basevalue}EECHEEWAMAA", null
+        user, err, value <- commands.getkey bucket, key, null
+        expect user .to.equal bucket
         expect value.length .to.equal VALUELENGTH
         expect value.slice -10 .to.equal 'vvvvvvvvvE'
         expect err, err .to.be.null
@@ -178,13 +196,15 @@ describe "Commands" ->
       done!
   
     specify 'should get a key' (done) ->
-      _, err, value <- commands.getkey bucket, 'warzoo', null
+      user, err, value <- commands.getkey bucket, 'warzoo', null
+      expect user .to.equal bucket
       expect value .to.equal "nozoo"
       expect err, err .to.be.null
       done!
   
     specify 'should get multiple keys' (done) ->
-      _, err, value <- commands.getkey bucket, '["warzoo","fofrzoo"]', null
+      user, err, value <- commands.getkey bucket, '["warzoo","fofrzoo"]', null
+      expect user .to.equal bucket
       expect value .to.eql do
         warzoo: 'nozoo'
         fofrzoo: 'rennets' 
@@ -192,7 +212,8 @@ describe "Commands" ->
       done!
   
     specify 'should get a right key and wrong key' (done) ->
-      _, err, value <- commands.getkey bucket, '["warzoo","xfofrzoo"]', null
+      user, err, value <- commands.getkey bucket, '["warzoo","xfofrzoo"]', null
+      expect user .to.equal bucket
       expect value .to.eql do
         warzoo: 'nozoo'
         xfofrzoo: null
@@ -200,25 +221,29 @@ describe "Commands" ->
       done!
   
     specify 'should get all wrong keys' (done) ->
-      _, err, value <- commands.getkey bucket, '["parzoo","xfofrzoo"]', null
+      user, err, value <- commands.getkey bucket, '["parzoo","xfofrzoo"]', null
+      expect user .to.equal bucket
       expect value .to.be.undefined
       expect err, err .to.equal 'not found'
       done!
   
     specify 'should be ok with "object" key' (done) ->
-      _, err, value <- commands.getkey bucket, '{"one": "two"}', null
+      user, err, value <- commands.getkey bucket, '{"one": "two"}', null
+      expect user .to.equal bucket
       expect value .to.equal "yup"
       expect err, err .to.be.null
       done!
   
     specify 'should fail on bad bucket' (done) ->
-      _, err, value <- commands.getkey "5FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD", 'warzoo', null
+      user, err, value <- commands.getkey "5FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD", 'warzoo', null
+      expect user .to.equal "5FBrtQyw19S2jM9PQjhe1WKEcUzO2EHlgtqoUzhD"
       expect err .to.equal 'not found'
       expect value .to.be.undefined
       done!
   
     specify 'should fail on unknown key' (done) ->
-      _, err, value <- commands.getkey bucket, 'wazoo', null
+      user, err, value <- commands.getkey bucket, 'wazoo', null
+      expect user .to.equal bucket
       expect err .to.equal 'not found'
       expect value .to.be.undefined
       done!
@@ -232,26 +257,31 @@ describe "Commands" ->
       done!
 
     beforeEach (done) ->
-      _, err <- commands.setkey bucket, "parzoo", "amzoo", null
+      user, err <- commands.setkey bucket, "parzoo", "amzoo", null
+      expect user .to.equal bucket
       done err
       
     specify 'should delete a key' (done) ->
-      _, err <- commands.delkey bucket, 'parzoo', null
+      user, err <- commands.delkey bucket, 'parzoo', null
+      expect user .to.equal bucket
       expect err, err .to.be.null
       # Make sure it's gone.
-      _, err, value <- commands.getkey bucket, 'parzoo', null
+      user, err, value <- commands.getkey bucket, 'parzoo', null
+      expect user .to.equal bucket
       expect err .to.equal 'not found'
       expect value .to.be.undefined
       done!
   
     specify 'should fail on bad bucket' (done) ->
-      _, err <- commands.delkey '1WKEcUzO2EHlgtqoUzhD', 'parzoo', null
+      user, err <- commands.delkey '1WKEcUzO2EHlgtqoUzhD', 'parzoo', null
+      expect user .to.equal '1WKEcUzO2EHlgtqoUzhD'
       expect err, err .to.equal 'not found'
       # Make sure it's gone.
       done!
   
     specify 'should fail on unknown key' (done) ->
-      _, err <- commands.delkey bucket, 'lkdsfjlakdfsj', null
+      user, err <- commands.delkey bucket, 'lkdsfjlakdfsj', null
+      expect user .to.equal bucket
       expect err, err .to.equal 'not found'
       done!
       
@@ -260,19 +290,22 @@ describe "Commands" ->
   
       specify 'Add one to get the full length' (done) ->
         <- commands.setkey bucket, basekey + "EXTRASTUFF", "hamzoo", null
-        _, err <- commands.delkey bucket, "#{basekey}E", null
+        user, err <- commands.delkey bucket, "#{basekey}E", null
+        expect user .to.equal bucket
         expect err, err .to.be.null
         done!
     
       specify 'Add a bunch, but only the first is going to count.' (done) ->
         <- commands.setkey bucket, basekey + "EXTRASTUFF", 'whatta', null
-        _, err <- commands.delkey bucket, "#{basekey}EYUPMAN", null
+        user, err <- commands.delkey bucket, "#{basekey}EYUPMAN", null
+        expect user .to.equal bucket
         expect err, err .to.be.null
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
         <- commands.setkey bucket, basekey + "EXTRASTUFF", 'whatyo', null
-        _, err <- commands.delkey bucket, basekey, null
+        user, err <- commands.delkey bucket, basekey, null
+        expect user .to.equal bucket
         expect err, err .to.equal 'not found'
         done!
     
@@ -302,7 +335,8 @@ describe "Commands" ->
       done!
   
     specify 'should list keys' (done) ->
-      _, err, values <- commands.listkeys bucket, null, null
+      user, err, values <- commands.listkeys bucket, null, null
+      expect user .to.equal bucket
       expect err, 'slk' .to.be.null
       expect values .to.have.members do
         * "testbucketinfo"
@@ -319,7 +353,8 @@ describe "Commands" ->
       done!
 
     specify 'A string can find matching keys, caselessly' (done) ->
-      _, err, values <- commands.listkeys bucket, 'wHo', null
+      user, err, values <- commands.listkeys bucket, 'wHo', null
+      expect user .to.equal bucket
       expect err, 'ascfmkc' .to.be.null
       expect values .to.have.members do
         * "werpawhoo"
@@ -328,21 +363,24 @@ describe "Commands" ->
       done!
 
     specify 'String with no matches finds nothing.' (done) ->
-      _, err, values <- commands.listkeys bucket, 'wrho', null
+      user, err, values <- commands.listkeys bucket, 'wrho', null
+      expect user .to.equal bucket
       expect err, 'swnmfn' .to.be.null
       expect values .to.have.members []
       done!
 
     specify 'should list keys of non-existent bucket' (done) ->
-      _, err, values <- commands.listkeys "BARQUET", null, null
+      user, err, values <- commands.listkeys "BARQUET", null, null
+      expect user .to.equal 'BARQUET'
       expect err, 'slkoneb' .to.equal 'not found'
       expect values .to.have.undefined
       done!
 
     specify 'should list keys of empty bucket' (done) ->
-      _, err, emptybucket <- commands.newbucket "Info string", "192.231.221.256", 'slkoeb', null
-      _, err, values <- commands.listkeys emptybucket, null, null
+      user, err, emptybucket <- commands.newbucket "Info string", "192.231.221.256", 'slkoeb', null
+      user, err, values <- commands.listkeys emptybucket, null, null
       <- utils.mark_bucket emptybucket
+      expect user .to.equal emptybucket
       expect err, 'slkoeb' .to.be.null
       expect values, 'slkoebv' .to.eql []
       done!
@@ -357,25 +395,31 @@ describe "Commands" ->
       done!
   
     specify 'should delete the bucket' (done) ->
-      _, err <- commands.delkey bucket, "junkbucketfufto", null
+      user, err <- commands.delkey bucket, "junkbucketfufto", null
+      expect user .to.equal bucket
       expect err, err .to.be.null
-      _, err <- commands.delbucket bucket, null
+      user, err <- commands.delbucket bucket, null
+      expect user .to.equal bucket
       expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
   
     specify 'should fail on unknown bucket' (done) ->
-      _, err <- commands.delkey bucket, "1WKEcUzO2EHlgtqoUzhD", null
+      user, err <- commands.delkey bucket, "1WKEcUzO2EHlgtqoUzhD", null
+      expect user .to.equal bucket
       expect err, err .to.equal 'not found'
       done!
   
     specify 'should fail if bucket has entries' (done) ->
-      _, err <- commands.delbucket bucket, null
+      user, err <- commands.delbucket bucket, null
+      expect user .to.equal bucket
       expect err, "second err" .to.equal 'not empty'
       # Delete the keys.
-      _, err <- commands.delkey bucket, "junkbucketfufto", null
+      user, err <- commands.delkey bucket, "junkbucketfufto", null
+      expect user .to.equal bucket
       expect err, err .to.be.null  # TODO: UNIFY THESE!!!
       # Then try to delete the bucket again.
-      _, err <- commands.delbucket bucket, null
+      user, err <- commands.delbucket bucket, null
+      expect user .to.equal bucket
       expect err, "second err" .to.be.null  # TODO: UNIFY THESE!!!
       done!
 
@@ -407,9 +451,11 @@ describe "Commands" ->
     describe 'gets' ->
       driver (tag, utf_string) ->
         specify tag, (done) ->
-          _, err <- commands.setkey bucket, utf_string, utf_string, null
+          user, err <- commands.setkey bucket, utf_string, utf_string, null
+          expect user .to.equal bucket
           expect err, "UCG1 err" .to.be.null
-          _, err, value <- commands.getkey bucket, utf_string, null
+          user, err, value <- commands.getkey bucket, utf_string, null
+          expect user .to.equal bucket
           expect err, "UCG2 err" .to.be.null      
           expect value, "value no match" .to.equal utf_string
           done!

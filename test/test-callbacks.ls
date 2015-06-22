@@ -43,16 +43,20 @@ describe 'Callbacks' ->
       done!
 
     specify 'should register a callback' (done) ->
-      _, err <- commands.register_callback bucket, 'http://localhost', null
+      user, err <- commands.register_callback bucket, 'http://localhost', null
+      expect user .to.equal bucket
       expect err,err .to.be.null
       done!
 
     specify 'should list callbacks' (done) ->
-      _, err <- commands.register_callback bucket, 'http://localhost/one', null
+      user, err <- commands.register_callback bucket, 'http://localhost/one', null
+      expect user .to.equal bucket
       expect err,err .to.be.null
-      _, err <- commands.register_callback bucket, 'http://localhost/two', null
+      user, err <- commands.register_callback bucket, 'http://localhost/two', null
+      expect user .to.equal bucket
       expect err,err .to.be.null
-      _, err, callbacks <- commands.list_callbacks bucket, null
+      user, err, callbacks <- commands.list_callbacks bucket, null
+      expect user .to.equal bucket
       expect err,err .to.be.null
       expect callbacks, 'slc' .to.eql do
         'http://localhost/one': { data: null, log: [], method: 'POST' }
@@ -60,10 +64,13 @@ describe 'Callbacks' ->
       done!
 
     specify 'should delete a callback' (done) ->
-      _, err <- commands.register_callback bucket, 'http://localhost/three', null
+      user, err <- commands.register_callback bucket, 'http://localhost/three', null
+      expect user .to.equal bucket
       expect err,err .to.be.null
-      _, err <- commands.register_callback bucket, 'http://localhost/four', null
+      user, err <- commands.register_callback bucket, 'http://localhost/four', null
+      expect user .to.equal bucket
       expect err,err .to.be.null
+      expect user .to.equal bucket
       _, err <- commands.delete_callback bucket, 'http://localhost/four', null
       _, err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sdac' .to.eql do
@@ -75,7 +82,8 @@ describe 'Callbacks' ->
       timeout_scale = 100
       if process.env.NODE_ENV == 'test'
         timeout_scale := 200
-      _, err <- commands.register_callback bucket, callback_url + "?morphal", null
+      user, err <- commands.register_callback bucket, callback_url + "?morphal", null
+      expect user .to.equal bucket
       expect err,err .to.be.null
       _, err <- commands.setkey bucket, "key", "data", "whatsup"
       <- setTimeout _, timeout_scale
@@ -90,19 +98,23 @@ describe 'Callbacks' ->
       if process.env.NODE_ENV == 'test'
         timeout_scale := 100
       @timeout timeout_scale * 50
-      _, err <- commands.register_callback bucket, callback_url + "?first", null
+      user, err <- commands.register_callback bucket, callback_url + "?first", null
+      expect user .to.equal bucket
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      _, err <- commands.register_callback bucket, callback_url + "?second", null
+      user, err <- commands.register_callback bucket, callback_url + "?second", null
+      expect user .to.equal bucket
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      _, err <- commands.setkey bucket, "key", "data", "whatsup"
+      user, err <- commands.setkey bucket, "key", "data", "whatsup"
+      expect user .to.equal bucket
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      _, err <- commands.setkey bucket, "key", "data", "whatdown"
+      user, err <- commands.setkey bucket, "key", "data", "whatdown"
+      expect user .to.equal bucket
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale * 2
-      _, err, callbacks <- commands.list_callbacks bucket, null
+      user, err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sfmc' .to.eql do
         * "#{callback_url}?first":
             data: null
