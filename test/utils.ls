@@ -200,11 +200,13 @@ export recordBuckets = (cb) ->
       indexKey: '_'
       stream: false
   registered_buckets = [..objectKey for result.values]
+  registered_buckets.sort!
+  actual_buckets.sort!
   cb actual_buckets, registered_buckets
-
 
 export checkBuckets = (actual_buckets, registered_buckets, cb) ->
   err, result <- riak_client.listBuckets { stream: false }
+  result.buckets.sort!
   expect result.buckets, "checkBuckets" .to.eql actual_buckets
   err, result <- riak_client.secondaryIndexQuery do
     * bucket: commands.BUCKET_LIST
@@ -212,6 +214,7 @@ export checkBuckets = (actual_buckets, registered_buckets, cb) ->
       indexKey: '_'
       stream: false
   reg_buckets_now = [..objectKey for result.values]
+  reg_buckets_now.sort!
   expect reg_buckets_now, "checkBuckets2" .to.eql registered_buckets
   cb!
 
