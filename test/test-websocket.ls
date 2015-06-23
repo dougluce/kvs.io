@@ -6,13 +6,14 @@ require! {
   './utf-cases'
   './utils'
   bunyan
+  async
 }
 
 KEYLENGTH = 256 # Significant length of keys.
 VALUELENGTH = 65536 # Significant length of values
 
 describe 'Websockets' ->
-  sandbox = server = client = json_client = ws = null
+  actual_buckets = registered_buckets = sandbox = server = client = json_client = ws = null
 
   ws_setkey = (bucket, done, key = "clubbed", value="into dank submission") ->
     ws.send JSON.stringify do
@@ -49,9 +50,7 @@ describe 'Websockets' ->
         command: "delkey"
         bucket: bucket
         key: key
-    data <- ws.get
-    data = JSON.parse data
-    expect data.success,'ws_delkey' .to.be.true
+    <- ws.get
     done!
 
   before (done) ->
@@ -63,16 +62,20 @@ describe 'Websockets' ->
     s, c, j <- utils.startServer 8088
     [server, client, json_client] := [s, c, j]
     api.init server, logstub
+    utils.clients!
+    a, r <- utils.recordBuckets
+    [actual_buckets, registered_buckets] := [a, r]
+    messageCallback = null
     ws := new WebSocket 'ws://localhost:8088/ws'
       ..on 'open' ->
         done!
-    messageCallback = null
     ws.on 'message' (data, flags) ->
       messageCallback data
     ws.get = (cb) ->
         messageCallback := cb
 
   after (done) ->
+    <- utils.checkBuckets actual_buckets, registered_buckets
     ws.close!
     client.close!
     json_client.close!
@@ -136,15 +139,18 @@ describe 'Websockets' ->
         command: "newbucket"
       data <- ws.get
       data = JSON.parse data
-      expect data.result .to.match /^[0-9a-zA-Z]{20}$/
+      bucket = data.result
+      expect bucket .to.match /^[0-9a-zA-Z]{20}$/
       expect data.success .to.be.true
       ws.send JSON.stringify do
         command: "setkey"
-        bucket: data.result
+        bucket: bucket
         key: "huh"
         value: "valuewhuh"
       data <- ws.get
       expect JSON.parse(data) .to.eql {success: true}
+      <- ws_delkey bucket, "huh"
+      <- ws_delbucket bucket
       done!
     
   describe '/keyops' ->
@@ -159,7 +165,6 @@ describe 'Websockets' ->
       <- ws_delkey bucket, "testbucketinfo"
       ws_delbucket bucket, done
 
- 
     beforeEach (done) ->
       ws.send JSON.stringify do
         command: "setkey"
@@ -191,19 +196,32 @@ describe 'Websockets' ->
   describe '/listkeys' ->
     bucket = ""
     basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
-    
+
+    keys =
+      "the"
+      "gods"
+      "will"
+      "offer"
+      "#{basekey}hard"
+      "#{basekey}hearts" # Should get lost...
+      "#{basekey}"
+
     before (done) ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
-      <- ws_setkey bucket, _, "the"
-      <- ws_setkey bucket, _, "gods"
-      <- ws_setkey bucket, _, "will"
-      <- ws_setkey bucket, _, "offer"
-      <- ws_setkey bucket, _, "#{basekey}hard"
-      <- ws_setkey bucket, _, "#{basekey}hearts" # Should get lost...
-      <- ws_setkey bucket, _, "#{basekey}"
-      ws_setkey bucket, done
-  
+      <- async.eachSeries keys, (key, cb) ->
+        ws_setkey bucket, cb, key
+      <- ws_setkey bucket
+      done!
+
+    after (done) ->
+      <- async.eachSeries keys, (key, cb) ->
+        key .= substr 0, KEYLENGTH
+        ws_delkey bucket, key, cb
+      <- ws_delkey bucket, "clubbed"
+      <- utils.delete_bucket bucket, '/listkeys'
+      done!
+
     specify 'should list keys' (done) ->
       ws.send JSON.stringify do
         command: "listkeys"
@@ -233,11 +251,16 @@ describe 'Websockets' ->
       bucket := newbucket
       done!
       
+    after (done) ->
+      <- utils.delete_bucket bucket, "utf-8"
+      done!
+      
     utf_case = (tag, utf_string) ->
       specify tag, (done) ->
         <- ws_setkey bucket, _, utf_string, utf_string
         data <- ws_getkey bucket, utf_string
         expect data .to.equal utf_string
+        <- utils.delete_key bucket, utf_string, "Utfc"
         done!
   
     #

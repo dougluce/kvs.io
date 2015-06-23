@@ -7,16 +7,20 @@ require! {
 }
 
 describe 'Callbacks' ->
-  sandbox = null
+  actual_buckets = registered_buckets = sandbox = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
     commands.init!
+    utils.clients!
+    a, r <- utils.recordBuckets
+    [actual_buckets, registered_buckets] := [a, r]
     done!
 
   after (done) ->
+    <- utils.checkBuckets actual_buckets, registered_buckets
     sandbox.restore!
     done!
 
@@ -40,6 +44,10 @@ describe 'Callbacks' ->
     beforeEach (done) ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
+      done!
+
+    afterEach (done) ->
+      <- utils.delete_bucket bucket, 'callbacks'
       done!
 
     specify 'should register a callback' (done) ->
@@ -91,13 +99,14 @@ describe 'Callbacks' ->
       expect callbacks, 'sfaroc' .to.eql do
         * "#{callback_url}?morphal": { data: null, log: [{body: "Something /?morphal", status: 200}], method: 'POST' }
         ...
+      <- utils.delete_key bucket, "key", "sdac"
       done!
 
     specify 'should fire multiple callbacks' (done) ->
-      timeout_scale = 30
+      timeout_scale = 60
       if process.env.NODE_ENV == 'test'
         timeout_scale := 100
-      @timeout timeout_scale * 50
+      @timeout 5000
       user, err <- commands.register_callback bucket, callback_url + "?first", null
       expect user .to.equal bucket
       expect err,err .to.be.null
@@ -128,5 +137,6 @@ describe 'Callbacks' ->
               * {body: "Something /?second", status: 200}
                 {body: "Something /?second", status: 500}
             method: 'POST'
+      <- utils.delete_key bucket, "key", "sfmc"
       done!
 

@@ -21,24 +21,13 @@ check_err = (err, res, where, status) ->
   expect res.statusCode, "status #where" .to.equal status
 
 describe "API" ->
-  bucket = key = actual_buckets = registered_buckets = riak_client = server = sandbox = client = json_client = null
+  bucket = key = actual_buckets = registered_buckets = server = sandbox = client = json_client = null
 
   api_setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
     err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
     check_err err, res, "setkey #bucket -- #key/#value #err", 201
     expect data, "setkey data" .to.be.empty
     done!
-
-  delete_bucket = (bucket, tag, cb) ->
-    err, req, res, data <- client.get "/delkey/#bucket/testbucketinfo"
-    err, req, res, data <- client.get "/delbucket/#bucket"
-    expect data, "dbfirst - #tag" .to.be.empty
-    check_err err, res, "dbsecond - #tag", 204
-    cb!
-
-  delete_key = (bucket, key, tag, cb) ->
-    err, req, res, data <- client.get "/delkey/#bucket/#key"
-    cb err
 
   before (done) ->
     @timeout 3000
@@ -50,29 +39,13 @@ describe "API" ->
     s, c, j <- utils.startServer 8088
     [server, client, json_client] := [s, c, j]
     api.init server, logstub
-    riak_client := new Riak.Client ['127.0.0.1']
-    err, result <- riak_client.listBuckets { stream: false }
-    actual_buckets := result.buckets
-    err, result <- riak_client.secondaryIndexQuery do
-      * bucket: commands.BUCKET_LIST
-        indexName: '$bucket'
-        indexKey: '_'
-        stream: false
-    registered_buckets := [..objectKey for result.values]
+    a, r <- utils.recordBuckets
+    [actual_buckets, registered_buckets] := [a, r]
     done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    err, result <- riak_client.listBuckets { stream: false }
-    expect result.buckets, "now" .to.eql actual_buckets
-    err, result <- riak_client.secondaryIndexQuery do
-      * bucket: commands.BUCKET_LIST
-        indexName: '$bucket'
-        indexKey: '_'
-        stream: false
-    reg_buckets_now = [..objectKey for result.values]
-    expect reg_buckets_now, "now2" .to.eql registered_buckets
-    <- utils.cull_test_buckets
+    <- utils.checkBuckets actual_buckets, registered_buckets
     client.close!
     json_client.close!
     <- server.close
@@ -84,7 +57,7 @@ describe "API" ->
     done!
 
   afterEach (done) ->
-    <- delete_key bucket, key, '/setkey'
+    <- utils.delete_key bucket, key, '/setkey'
     done!
   
   describe '/newbucket' ->
@@ -92,14 +65,14 @@ describe "API" ->
       err, req, res, data <- client.get '/newbucket'
       check_err err, res, 'scab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/
-      <- delete_bucket data, 'scab'
+      <- utils.delete_bucket data, 'scab'
       done!
   
     specify 'POST / should also create a bucket' (done) ->
       err, req, res, data <- client.post '/'
       check_err err, res, 'sacab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/
-      <- delete_bucket data, 'sacab'
+      <- utils.delete_bucket data, 'sacab'
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
@@ -122,7 +95,7 @@ describe "API" ->
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
-      <- delete_bucket bucket_name, 'bbce'
+      <- utils.delete_bucket bucket_name, 'bbce'
       done!
 
     specify 'non-test bucket should also work' sinon.test (done) ->
@@ -141,7 +114,7 @@ describe "API" ->
       done!
 
     after (done) ->
-      <- delete_bucket bucket, '/setkey'
+      <- utils.delete_bucket bucket, '/setkey'
       done!
 
     specify 'should set a key' (done) ->
@@ -220,7 +193,7 @@ describe "API" ->
       done!
 
     after (done) ->
-      <- delete_bucket bucket, "/getkey"
+      <- utils.delete_bucket bucket, "/getkey"
       done!
       
     beforeEach (done) ->
@@ -260,8 +233,8 @@ describe "API" ->
       api_setkey bucket, done
 
     afterEach (done) ->
-      <- delete_key bucket, key, "/delkey"
-      <- delete_bucket bucket, "/delkey"
+      <- utils.delete_key bucket, key, "/delkey"
+      <- utils.delete_bucket bucket, "/delkey"
       done!
   
     specify 'should delete a key' (done) ->
@@ -313,7 +286,7 @@ describe "API" ->
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
         expect data, "add a bunch" .to.be.empty
         check_err err, res, 'aabbotfigtc', 204
-        <- delete_key bucket, "#{basekey}E", "aabbotfigtc"
+        <- utils.delete_key bucket, "#{basekey}E", "aabbotfigtc"
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
@@ -321,7 +294,7 @@ describe "API" ->
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}"
         expect data .to.equal err.message .to.equal 'Entry not found.'
         expect err.statusCode, "on truncated delete" .to.equal 404
-        <- delete_key bucket, "#{basekey}E", "dtokotssf"
+        <- utils.delete_key bucket, "#{basekey}E", "dtokotssf"
         done!
     
   describe '/listkeys' ->
@@ -350,11 +323,11 @@ describe "API" ->
     after (done) ->
       async.each keys, (key, cb) ->
         key .= substr 0, KEYLENGTH
-        err <- delete_key bucket, key, "/listkeys"
+        err <- utils.delete_key bucket, key, "/listkeys"
         cb err
       , ->
         err, req, res, data <- client.get "/listkeys/#{bucket}"
-        <- delete_bucket bucket, "/listkeys"
+        <- utils.delete_bucket bucket, "/listkeys"
         done!
 
     specify 'should list keys' (done) ->
@@ -410,8 +383,8 @@ describe "API" ->
       err, req, res, data <- client.get "/delbucket/1WKEcUzO2EHlgtqoUzhD"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
-      <- delete_key bucket, "someDamnedThing", "/delbucket"
-      <- delete_bucket bucket, "/delbucket"
+      <- utils.delete_key bucket, "someDamnedThing", "/delbucket"
+      <- utils.delete_bucket bucket, "/delbucket"
       done!
   
     specify 'should fail if bucket has entries' (done) ->
@@ -441,7 +414,7 @@ describe "API" ->
       done!
 
     after (done) ->
-      <- delete_bucket bucket, "utf-8"
+      <- utils.delete_bucket bucket, "utf-8"
       done!
 
     utf_case_get = (tag, utf_string) ->
@@ -560,7 +533,7 @@ describe "API" ->
       done!
 
     after (done) ->
-      <- delete_bucket bucket, "long poll listen"
+      <- utils.delete_bucket bucket, "long poll listen"
       done!
 
     specify 'Listen for key set' (done) ->
@@ -582,7 +555,7 @@ describe "API" ->
         event: "setkey"
         args: ["wazoo", "zoowahharf", ""]
         data: ""
-      <- delete_key bucket, key, "lfks"
+      <- utils.delete_key bucket, key, "lfks"
       done!
 
   describe '/listen' ->

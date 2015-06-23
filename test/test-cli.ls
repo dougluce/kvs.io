@@ -10,7 +10,7 @@ require! {
 }
 
 describe "CLI alone" ->
-  d = sandbox = telnet_server = null
+  actual_buckets = registered_buckets = d = sandbox = telnet_server = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
@@ -20,7 +20,10 @@ describe "CLI alone" ->
       utils.stub_riak_client sandbox
 
     cli.init {} # use CLI-only commands.
-
+    
+    a, r <- utils.recordBuckets
+    [actual_buckets, registered_buckets] := [a, r]
+    
     telnet_server := cli.start_telnetd 7008
     d := new utils.Connector '127.0.0.1', 7008, ->
       data <- d.wait 2 # Get banner and prompt
@@ -34,7 +37,7 @@ describe "CLI alone" ->
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
     <- telnet_server.close
-    <- utils.cull_test_buckets
+    <- utils.checkBuckets actual_buckets, registered_buckets
     sandbox.restore!
     done!
 
@@ -113,7 +116,6 @@ describe "CLI full commands" ->
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
     <- telnet_server.close
-    <- utils.cull_test_buckets
     sandbox.restore!
     done!
 
@@ -216,7 +218,6 @@ describe "CLI rodeo" ->
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     <- telnet_server.close
-    <- utils.cull_test_buckets
     client.close!
     json_client.close!
     <- server.close

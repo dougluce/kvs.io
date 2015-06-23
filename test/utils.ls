@@ -60,8 +60,7 @@ export unmark_bucket = (bucket, done) ->
   err <- riak_client.deleteValue do
     * bucket: bucket
       key: "testbucketinfo"
-  return done err if err
-  done!
+  done err
 
 # Mark means to mark it for later deletion.
 # Set false for tests that will delete the bucket.
@@ -76,6 +75,32 @@ export markedbucket = (mark, done) ->
     done bucket
   else
     done bucket
+
+export delete_bucket = (bucket, tag, cb) ->
+  # Convenient.
+  <- unmark_bucket bucket
+  # Is there anything in the bucket?
+  values = null
+  riak_client.secondaryIndexQuery do
+    * bucket: bucket
+      indexName: '$bucket'
+      indexKey: '_'
+      stream: false
+    (err, result) ->
+      if result.values
+        values := [..objectKey for result.values]
+      expect values, tag .to.eql []
+      err, result <- riak_client.deleteValue do
+        * bucket: 'buckets'
+          key: bucket
+      cb err
+
+export delete_key = (bucket, key, tag, cb) ->
+  err, result <- riak_client.deleteValue do
+    * bucket: bucket
+      key: key
+  expect err, tag .to.be.null
+  cb!
 
 # Delete everything in a bucket
 # Accesses riak directly!
@@ -97,9 +122,7 @@ export deleteall = (bucket, done) ->
     , cb
   , ->
     keys.length > 0
-  err, result <- riak_client.deleteValue do
-    * bucket: 'buckets'
-      key: bucket
+  err <- delete_bucket bucket, "deleteall"
   expect err, "delbucket #err" .to.be.null
   done!
 
@@ -144,10 +167,11 @@ export stub_riak_client = (sinon) ->
       return cb null, {values: values}
     deleteValue: (options, cb) ->
       {bucket, key} = options
-      delete stub_riak[bucket][key] if stub_riak[bucket]
-      len = Object.keys(stub_riak[bucket]).length
-      if Object.keys(stub_riak[bucket]).length < 1
-        delete stub_riak[bucket]
+      if stub_riak[bucket]
+        delete stub_riak[bucket][key] if stub_riak[bucket][key]
+        len = Object.keys(stub_riak[bucket]).length
+        if Object.keys(stub_riak[bucket]).length < 1
+          delete stub_riak[bucket]
       cb null, true
 
 export startServer = (port, done) ->
@@ -166,6 +190,30 @@ export startServer = (port, done) ->
       else
         throw err
     ..run runServer
+
+export recordBuckets = (cb) ->
+  err, result <- riak_client.listBuckets { stream: false }
+  actual_buckets = result.buckets
+  err, result <- riak_client.secondaryIndexQuery do
+    * bucket: commands.BUCKET_LIST
+      indexName: '$bucket'
+      indexKey: '_'
+      stream: false
+  registered_buckets = [..objectKey for result.values]
+  cb actual_buckets, registered_buckets
+
+
+export checkBuckets = (actual_buckets, registered_buckets, cb) ->
+  err, result <- riak_client.listBuckets { stream: false }
+  expect result.buckets, "checkBuckets" .to.eql actual_buckets
+  err, result <- riak_client.secondaryIndexQuery do
+    * bucket: commands.BUCKET_LIST
+      indexName: '$bucket'
+      indexKey: '_'
+      stream: false
+  reg_buckets_now = [..objectKey for result.values]
+  expect reg_buckets_now, "checkBuckets2" .to.eql registered_buckets
+  cb!
 
 export class Connector
   (host, port, connect_cb) ->

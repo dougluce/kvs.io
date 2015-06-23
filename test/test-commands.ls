@@ -14,17 +14,21 @@ VALUELENGTH = 65536 # Significant length of values
 sandbox = null
 
 describe "Commands" ->
+  actual_buckets = registered_buckets = null
+
   before (done) ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
     commands.init!
     utils.clients!
+    a, r <- utils.recordBuckets
+    [actual_buckets, registered_buckets] := [a, r]
     done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
-    <- utils.cull_test_buckets
+    <- utils.checkBuckets actual_buckets, registered_buckets
     sandbox.restore!
     done!
   
@@ -34,7 +38,7 @@ describe "Commands" ->
       expect user, "newbucket user" .to.equal newbucket
       expect err, "newbucket #err" .to.be.null
       expect newbucket .to.match /^[0-9a-zA-Z]{20}$/
-      <- utils.mark_bucket newbucket
+      <- utils.delete_bucket newbucket, "scab"
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
@@ -44,20 +48,23 @@ describe "Commands" ->
       expect user,"newbucket cryptoerror" .to.be.null
       expect err .to.equal 'Crypto error'
       expect newbucket .to.be.undefined
+      <- utils.delete_bucket newbucket, "scab"
       done!
   
     specify 'Bad bucket creation error' sinon.test (done) ->
+      samebucket = "INEXPLICABLYSAMERANDOMDATA"
       @stub crypto, "randomBytes", (count, cb) ->
-        cb null, "INEXPLICABLYSAMERANDOMDATA"
+        cb null, samebucket
       user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test', null
       expect user,"bbce" .to.equal newbucket
       expect err .to.equal null
-      expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
+      expect newbucket .to.equal samebucket
       
       user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test 2', null
       expect user,"bbce2" .to.equal newbucket
       expect err, err .to.equal 'bucket already exists'
-      expect newbucket .to.equal "INEXPLICABLYSAMERANDOMDATA"
+      expect newbucket .to.equal samebucket
+      <- utils.delete_bucket samebucket, "scab"
       done!
   
   describe '/setkey' ->
@@ -68,10 +75,15 @@ describe "Commands" ->
       bucket := newbucket
       done!
   
+    after (done) ->
+      <- utils.delete_bucket bucket, '/setkey'
+      done!
+  
     specify 'should set a key' (done) ->
       user, err <- commands.setkey bucket, "whatta", "maroon", null
       expect user, 'ssak2' .to.equal bucket
       expect err,'ssak' .to.be.null
+      <- utils.delete_key bucket, "whatta", 'ssak'
       done!
 
     specify 'should fail on bad bucket' (done) ->
@@ -89,8 +101,9 @@ describe "Commands" ->
         expect err,'aotgtfl2' .to.be.null
         user, err, value <- commands.getkey bucket, basekey + "E", null
         expect user, 'aotgtfl3' .to.equal bucket
-        expect err,'aotgtfl3' .to.be.null
+        expect err,'aotgtfl4' .to.be.null
         expect value .to.equal "verlue"
+        <- utils.delete_key bucket, basekey + "E", 'aotgtfl5'
         done!
   
       specify 'Add a bunch, but only the first is going to count.' (done) ->
@@ -108,6 +121,7 @@ describe "Commands" ->
         expect user, 'aabbotfigtc' .to.equal bucket
         expect err, 'aabbotfigtc2' .to.be.null
         expect value .to.equal "verlux"
+        <- utils.delete_key bucket, basekey + "E", 'aabbotfigtc3'
         done!
   
       specify 'Getting the original base key (one too short) should fail.' (done) ->
@@ -116,6 +130,7 @@ describe "Commands" ->
         expect user, 'gtobkotssf' .to.equal bucket
         expect err, 'gtobkotssf2' .to.equal 'not found'
         expect value .to.be.undefined
+        <- utils.delete_key bucket, basekey + "P", 'gtobkotssf3'
         done!
   
     describe "only the first #{VALUELENGTH} value chars count." (done) ->
@@ -129,6 +144,7 @@ describe "Commands" ->
         expect err, 'aotgtfl2' .to.be.null
         expect value.length .to.equal VALUELENGTH
         expect value .to.equal "#{basevalue}E"
+        <- utils.delete_key bucket, key, 'aotgtfl3'
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
@@ -138,6 +154,7 @@ describe "Commands" ->
         expect err, 'vtligc2' .to.be.null
         expect value.length .to.equal VALUELENGTH
         expect value.slice -10 .to.equal 'vvvvvvvvvE'
+        <- utils.delete_key bucket, key, 'aotgtfl3'
         done!
 
   describe '/newkey' ->
@@ -147,12 +164,17 @@ describe "Commands" ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
       done!
-  
+
+    after (done) ->
+      <- utils.delete_bucket bucket, '/setkey'
+      done!
+
     specify 'should create a new key' (done) ->
       user, err, key <- commands.newkey bucket, "it's some maroon", null
       expect user, 'scank' .to.equal bucket
       expect err, 'scank2' .to.be.null
       expect key .to.match /^[0-9a-zA-Z]{20}$/
+      <- utils.delete_key bucket, key, 'scank3'
       done!
 
     specify 'should fail on bad bucket' (done) ->
@@ -174,6 +196,7 @@ describe "Commands" ->
         expect value.length .to.equal VALUELENGTH
         expect value .to.equal "#{basevalue}E"
         expect err, err .to.be.null
+        <- utils.delete_key bucket, key, 'aotgtfl'
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
@@ -183,6 +206,7 @@ describe "Commands" ->
         expect value.length .to.equal VALUELENGTH
         expect value.slice -10 .to.equal 'vvvvvvvvvE'
         expect err, err .to.be.null
+        <- utils.delete_key bucket, key, 'vtligc'
         done!
   
   describe '/getkey' ->
@@ -194,7 +218,14 @@ describe "Commands" ->
       <- commands.setkey bucket, "fofrzoo", "rennets", null
       <- commands.setkey bucket, '{"one": "two"}', 'yup', null
       done!
-  
+
+    after (done) ->
+      <- utils.delete_key bucket, "warzoo", '/getkey'
+      <- utils.delete_key bucket, "fofrzoo", '/getkey'
+      <- utils.delete_key bucket, '{"one": "two"}', '/getkey'
+      <- utils.delete_bucket bucket, '/getkey'
+      done!
+
     specify 'should get a key' (done) ->
       user, err, value <- commands.getkey bucket, 'warzoo', null
       expect user .to.equal bucket
@@ -256,10 +287,18 @@ describe "Commands" ->
       bucket := newbucket
       done!
 
+    after (done) ->
+      <- utils.delete_bucket bucket, '/delkey'
+      done!
+
     beforeEach (done) ->
       user, err <- commands.setkey bucket, "parzoo", "amzoo", null
       expect user .to.equal bucket
       done err
+      
+    afterEach (done) ->
+      <- utils.delete_key bucket, "parzoo", '/delkey'
+      done!
       
     specify 'should delete a key' (done) ->
       user, err <- commands.delkey bucket, 'parzoo', null
@@ -293,6 +332,7 @@ describe "Commands" ->
         user, err <- commands.delkey bucket, "#{basekey}E", null
         expect user .to.equal bucket
         expect err, err .to.be.null
+        <- utils.delete_key bucket, "#{basekey}E", 'otfkkcc'
         done!
     
       specify 'Add a bunch, but only the first is going to count.' (done) ->
@@ -300,6 +340,7 @@ describe "Commands" ->
         user, err <- commands.delkey bucket, "#{basekey}EYUPMAN", null
         expect user .to.equal bucket
         expect err, err .to.be.null
+        <- utils.delete_key bucket, "#{basekey}E", 'aabbotfigtc'
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
@@ -307,31 +348,40 @@ describe "Commands" ->
         user, err <- commands.delkey bucket, basekey, null
         expect user .to.equal bucket
         expect err, err .to.equal 'not found'
+        <- utils.delete_key bucket, "#{basekey}E", 'dtokotssf'
         done!
     
   describe '/listkeys' ->
     bucket = ""
     
     basekey = Array KEYLENGTH .join 'x' # For key length checking
+
+    kv_pairs =  # Array of arrays
+      * "woohoo", "value here"
+      * "werp", "value here"
+      * "werpawhoo", "value here"
+      * "WhoeverKnowsShouldKnow", "value here"
+      * "StaggeringlyLessEfficient", "value here"
+      * "EatingItStraightOutOfTheBag", "value here"
+      * "#{basekey}WHOP", "value here"
+      * "#{basekey}WERP", "value here" # Should get lost...
+      * "#{basekey}", "value here"
+      * "#{basekey.substr 0, KEYLENGTH-4}awho", "value here"
+      * "#{basekey.substr 0, KEYLENGTH-3}awho", "value here" # Should be truncated
   
     before (done) ->
       @timeout 10000
       newbucket <- utils.markedbucket true
       bucket := newbucket
-      kv_pairs = 
-        * "woohoo", "value here"
-        * "werp", "value here"
-        * "werpawhoo", "value here"
-        * "WhoeverKnowsShouldKnow", "value here"
-        * "StaggeringlyLessEfficient", "value here"
-        * "EatingItStraightOutOfTheBag", "value here"
-        * "#{basekey}WHOP", "value here"
-        * "#{basekey}WERP", "value here" # Should get lost...
-        * "#{basekey}", "value here"
-        * "#{basekey.substr 0, KEYLENGTH-4}awho", "value here"
-        * "#{basekey.substr 0, KEYLENGTH-3}awho", "value here" # Should be truncated
       <- async.each kv_pairs, (keyvalue, cb) ->
         commands.setkey bucket, keyvalue[0], keyvalue[1], null, cb
+      done!
+  
+    after (done) ->
+      <- async.each kv_pairs, (keyvalue, cb) ->
+        key = keyvalue[0].substr 0, KEYLENGTH
+        utils.delete_key bucket, key, '/listkeys', cb
+      <- utils.delete_bucket bucket, '/listkeys'
       done!
   
     specify 'should list keys' (done) ->
@@ -383,6 +433,7 @@ describe "Commands" ->
       expect user .to.equal emptybucket
       expect err, 'slkoeb' .to.be.null
       expect values, 'slkoebv' .to.eql []
+      <- utils.delete_bucket emptybucket, "slkodb3"
       done!
 
   describe '/delbucket' ->
@@ -393,7 +444,12 @@ describe "Commands" ->
       bucket := newbucket
       <- commands.setkey bucket, "junkbucketfufto", 'whatyo', null
       done!
-  
+      
+    afterEach (done) ->
+      <- utils.delete_key bucket, "junkbucketfufto", '/delbucket'
+      <- utils.delete_bucket bucket, '/delbucket'
+      done!
+
     specify 'should delete the bucket' (done) ->
       user, err <- commands.delkey bucket, "junkbucketfufto", null
       expect user .to.equal bucket
@@ -431,6 +487,10 @@ describe "Commands" ->
       bucket := newbucket
       done!
       
+    after (done) ->
+      <- utils.delete_bucket bucket, 'utf-8'
+      done!
+      
     #
     # Trim the huge number of UTF cases in development to shorten test
     # runs while still getting some coverage.
@@ -458,5 +518,6 @@ describe "Commands" ->
           expect user .to.equal bucket
           expect err, "UCG2 err" .to.be.null      
           expect value, "value no match" .to.equal utf_string
+          <- utils.delete_key bucket, utf_string, "UCG3"
           done!
   
