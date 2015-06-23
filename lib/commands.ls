@@ -26,7 +26,7 @@ riak_client = null # Here to allow stubbing by tests.
 #
 
 randomString = (cb) ->
-  ex, buf <- crypto.randomBytes 15
+  ex, buf <- crypto.pseudoRandomBytes 15
   return cb ex if ex
   # URL- and hostname-safe strings.
   bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
@@ -89,15 +89,6 @@ bvalue =
   description: "B-value, passed on to callbacks"
   required: false
 
-
-firecallbacks = (bucket, func, ...args) ->
-  <- process.nextTick
-  err, result <- fetchValue BUCKET_LIST, bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
-  bucket_info = result.values[0]
-  for url, _ of bucket_info.callbacks
-    console.log "Gonna call back on #{url}"
 
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
@@ -405,6 +396,7 @@ export delkey = (bucket, key, b, cb) ->
   # Does the entry exist?
   err, result <- fetchValue bucket, key
   <- confirm_found bucket, err, result, cb
+  key .= substr 0, MAXKEYLENGTH
   err, result <- riak_client.deleteValue do
     * bucket: bucket
       key: key

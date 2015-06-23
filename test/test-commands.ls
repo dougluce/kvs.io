@@ -42,7 +42,7 @@ describe "Commands" ->
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
-      @stub crypto, "randomBytes", (count, cb) ->
+      @stub crypto, "pseudoRandomBytes", (count, cb) ->
         cb "Crypto error"
       user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", "ceobc test", null
       expect user,"newbucket cryptoerror" .to.be.null
@@ -53,7 +53,7 @@ describe "Commands" ->
   
     specify 'Bad bucket creation error' sinon.test (done) ->
       samebucket = "INEXPLICABLYSAMERANDOMDATA"
-      @stub crypto, "randomBytes", (count, cb) ->
+      @stub crypto, "pseudoRandomBytes", (count, cb) ->
         cb null, samebucket
       user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test', null
       expect user,"bbce" .to.equal newbucket

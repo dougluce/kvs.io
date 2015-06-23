@@ -21,7 +21,7 @@ check_err = (err, res, where, status) ->
   expect res.statusCode, "status #where" .to.equal status
 
 describe "API" ->
-  bucket = key = actual_buckets = registered_buckets = server = sandbox = client = json_client = null
+  actual_buckets = registered_buckets = server = sandbox = client = json_client = null
 
   api_setkey = (bucket, done, key = "wazoo", value="zoowahhhh") ->
     err, req, res, data <- client.get "/setkey/#{bucket}/#{key}/#{value}"
@@ -52,14 +52,6 @@ describe "API" ->
     sandbox.restore!
     done!
 
-  beforeEach (done) ->
-    key := 'wazoo'
-    done!
-
-  afterEach (done) ->
-    <- utils.delete_key bucket, key, '/setkey'
-    done!
-  
   describe '/newbucket' ->
     specify 'should create a bucket' (done) ->
       err, req, res, data <- client.get '/newbucket'
@@ -76,7 +68,7 @@ describe "API" ->
       done!
   
     specify 'crypto error on bucket creation' sinon.test (done) ->
-      @stub crypto, "randomBytes", (count, cb) ->
+      @stub crypto, "pseudoRandomBytes", (count, cb) ->
         cb "Crypto error"
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'Crypto error'
@@ -86,7 +78,7 @@ describe "API" ->
   
     specify 'Bad bucket creation error' sinon.test (done) ->
       bucket_name = "INEXPLICABLYSAMERANDOMDATA"
-      @stub crypto, "randomBytes", (count, cb) ->
+      @stub crypto, "pseudoRandomBytes", (count, cb) ->
         cb null, bucket_name
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal bucket_name
@@ -107,6 +99,8 @@ describe "API" ->
       done!
   
   describe '/setkey' ->
+    bucket = null
+    key = "heywhatever"
     
     before (done) ->
       newbucket <- utils.markedbucket true
@@ -121,12 +115,14 @@ describe "API" ->
       err, req, res, data <- client.get "/setkey/#{bucket}/#key/zoowahharf"
       check_err err, res, "api.setkey #bucket #err", 201 
       expect data, "setkey data" .to.be.empty
+      <- utils.delete_key bucket, key, 'ssak'
       done!
       
     specify 'PUT /:bucket/:key should also set a key' (done) ->
       err, req, res, data <- client.put "/#{bucket}/#key?value=zoowahharf"
       check_err err, res, "api.setkey #bucket #err", 201 
       expect data, "setkey data" .to.be.empty
+      <- utils.delete_key bucket, key, 'sasak'
       done!
       
     specify 'should fail on bad bucket' (done) ->
@@ -140,10 +136,11 @@ describe "API" ->
   
       specify 'Add one to get the full length' (done) ->
         <- api_setkey bucket, _, basekey + "EXTRASTUFF"
-        key := "#{basekey}E"
+        key = "#{basekey}E"
         err, req, res, data <- client.get "/getkey/#{bucket}/#key"
         expect data .to.equal "zoowahhhh"
         check_err err, res, 'bbce', 200
+        <- utils.delete_key bucket, key, 'aatgtfl'
         done!
   
       specify 'Add a bunch, only the last counts.' (done) ->
@@ -158,7 +155,7 @@ describe "API" ->
         err, req, res, data <- client.get "/getkey/#{bucket}/#{basekey}EYUPMAN"
         expect data .to.equal "three"
         check_err err, res, 'aabotlc', 200
-        key := "#{basekey}E"
+        <- utils.delete_key bucket, "#{basekey}E", 'aabotlc'
         done!
   
       specify 'Getting the original base key (one too short) should fail.' (done) ->
@@ -176,6 +173,7 @@ describe "API" ->
         expect data.length .to.equal VALUELENGTH
         expect data .to.equal "#{basevalue}E"
         check_err err, res, 'aotgtfl', 200
+        <- utils.delete_key bucket, key, 'aotgtfl'
         done!
   
       specify 'Value too long?  It gets chopped.' (done) ->
@@ -184,21 +182,23 @@ describe "API" ->
         expect data.length .to.equal VALUELENGTH
         expect data.slice -10 .to.equal 'vvvvvvvvvE'
         check_err err, res, 'vtligc', 200
+        <- utils.delete_key bucket, key, 'vtligc'
         done!
   
   describe '/getkey' ->
+    bucket = null
+    key = "yeahman"
+
     before (done) ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
-      done!
+      api_setkey bucket, done, key
 
     after (done) ->
+      <- utils.delete_key bucket, key, '/getkey'
       <- utils.delete_bucket bucket, "/getkey"
       done!
-      
-    beforeEach (done) ->
-      api_setkey bucket, done
-  
+
     specify 'should get a key' (done) ->
       err, req, res, data <- client.get "/getkey/#{bucket}/#key"
       expect data .to.equal "zoowahhhh"
@@ -225,15 +225,16 @@ describe "API" ->
       done!
   
   describe '/delkey' ->
-    bucket = ""
+    bucket = null
+    key = 'heynuts'
   
     beforeEach (done) ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
-      api_setkey bucket, done
+      <- api_setkey bucket, _, key
+      done!
 
     afterEach (done) ->
-      <- utils.delete_key bucket, key, "/delkey"
       <- utils.delete_bucket bucket, "/delkey"
       done!
   
@@ -263,16 +264,22 @@ describe "API" ->
       err, req, res, data <- client.get "/delkey/1WKEcUzO2EHlgtqoUzhD/mykey"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
+      <- utils.delete_key bucket, key, 'sfobb'
       done!
   
     specify 'should fail on unknown key' (done) ->
       err, req, res, data <- client.get "/delkey/#{bucket}/nomkey"
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
+      <- utils.delete_key bucket, key, 'sfouk'
       done!
       
     describe "only the first #{KEYLENGTH} key chars count" (done) ->
       basekey = Array KEYLENGTH .join 'x' # KEYLENGTH-1 length string
+
+      afterEach (done) ->
+        <- utils.delete_key bucket, key, "otfkkcc"
+        done!
   
       specify 'Add one to get the full length' (done) ->
         <- api_setkey bucket, _, basekey + "EXTRASTUFF"
@@ -286,7 +293,6 @@ describe "API" ->
         err, req, res, data <- client.get "/delkey/#{bucket}/#{basekey}EYUPMAN"
         expect data, "add a bunch" .to.be.empty
         check_err err, res, 'aabbotfigtc', 204
-        <- utils.delete_key bucket, "#{basekey}E", "aabbotfigtc"
         done!
         
       specify 'Deleting the original key (one too short) should fail.' (done) ->
@@ -298,7 +304,7 @@ describe "API" ->
         done!
     
   describe '/listkeys' ->
-    bucket = ""
+    bucket = null
     basekey = Array KEYLENGTH .join 'x' # For key length checking
     keys =
       "wazoo"
@@ -353,7 +359,7 @@ describe "API" ->
       done!
   
   describe '/delbucket' ->
-    bucket = ""
+    bucket = null
   
     beforeEach (done) ->
       newbucket <- utils.markedbucket false
@@ -406,7 +412,7 @@ describe "API" ->
       done!
   
   describe 'utf-8' ->
-    bucket = ""
+    bucket = null
   
     before (done) ->
       newbucket <- utils.markedbucket true
@@ -512,6 +518,8 @@ describe "API" ->
       done!
 
   describe 'mediatypes' ->
+    key = "howwhat"
+
     specify 'should not bomb on no accept header' (done) ->
       orig = client.headers.accept
       delete client.headers.accept
@@ -526,6 +534,7 @@ describe "API" ->
 
   describe 'long poll listen' ->
     bucket = null
+    key = 'craggyanud'
 
     before (done) ->
       newbucket <- utils.markedbucket true
@@ -553,13 +562,13 @@ describe "API" ->
       expect data, "listen data" .to.eql do
         bucket: bucket
         event: "setkey"
-        args: ["wazoo", "zoowahharf", ""]
+        args: ["craggyanud", "zoowahharf", ""]
         data: ""
       <- utils.delete_key bucket, key, "lfks"
       done!
 
   describe '/listen' ->
-    bucket = ""
+    bucket = null
 
     before (done) ->
       newbucket <- utils.markedbucket true
