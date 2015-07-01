@@ -45,6 +45,7 @@ describe "API" ->
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
+    <- process.nextTick
     <- utils.checkBuckets actual_buckets, registered_buckets
     client.close!
     json_client.close!
@@ -57,6 +58,7 @@ describe "API" ->
       err, req, res, data <- client.get '/newbucket'
       check_err err, res, 'scab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/
+      <- process.nextTick
       <- utils.delete_bucket data, 'scab'
       done!
   
@@ -64,22 +66,14 @@ describe "API" ->
       err, req, res, data <- client.post '/'
       check_err err, res, 'sacab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/
+      <- process.nextTick
       <- utils.delete_bucket data, 'sacab'
-      done!
-  
-    specify 'crypto error on bucket creation' sinon.test (done) ->
-      @stub crypto, "pseudoRandomBytes", (count, cb) ->
-        cb "Crypto error"
-      err, req, res, data <- client.get '/newbucket'
-      expect data .to.equal err.message .to.equal 'Crypto error'
-      expect err.statusCode .to.equal 500
-      expect res.statusCode .to.equal 500
       done!
   
     specify 'Bad bucket creation error' sinon.test (done) ->
       bucket_name = "INEXPLICABLYSAMERANDOMDATA"
-      @stub crypto, "pseudoRandomBytes", (count, cb) ->
-        cb null, bucket_name
+      @stub crypto, "pseudoRandomBytes", (count) ->
+        bucket_name
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal bucket_name
       check_err err, res, 'bbce', 201
@@ -87,6 +81,7 @@ describe "API" ->
       err, req, res, data <- client.get '/newbucket'
       expect data .to.equal err.message .to.equal 'cannot create bucket.'
       expect err.statusCode .to.equal res.statusCode .to.equal 500
+      <- process.nextTick
       <- utils.delete_bucket bucket_name, 'bbce'
       done!
 
@@ -108,6 +103,7 @@ describe "API" ->
       done!
 
     after (done) ->
+      <- process.nextTick
       <- utils.delete_bucket bucket, '/setkey'
       done!
 
@@ -235,6 +231,7 @@ describe "API" ->
       done!
 
     afterEach (done) ->
+      <- process.nextTick
       <- utils.delete_bucket bucket, "/delkey"
       done!
   
@@ -333,6 +330,7 @@ describe "API" ->
         cb err
       , ->
         err, req, res, data <- client.get "/listkeys/#{bucket}"
+        <- process.nextTick
         <- utils.delete_bucket bucket, "/listkeys"
         done!
 
@@ -390,6 +388,7 @@ describe "API" ->
       expect data .to.equal err.message .to.equal 'Entry not found.'
       expect err.statusCode .to.equal 404
       <- utils.delete_key bucket, "someDamnedThing", "/delbucket"
+      <- process.nextTick
       <- utils.delete_bucket bucket, "/delbucket"
       done!
   
@@ -420,6 +419,7 @@ describe "API" ->
       done!
 
     after (done) ->
+      <- process.nextTick
       <- utils.delete_bucket bucket, "utf-8"
       done!
 
@@ -542,6 +542,7 @@ describe "API" ->
       done!
 
     after (done) ->
+      <- process.nextTick
       <- utils.delete_bucket bucket, "long poll listen"
       done!
 

@@ -21,6 +21,7 @@ describe "CLI alone" ->
 
     cli.init {} # use CLI-only commands.
     
+    utils.clients!
     a, r <- utils.recordBuckets
     [actual_buckets, registered_buckets] := [a, r]
     

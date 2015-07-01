@@ -26,8 +26,7 @@ riak_client = null # Here to allow stubbing by tests.
 #
 
 randomString = (cb) ->
-  ex, buf <- crypto.pseudoRandomBytes 15
-  return cb ex if ex
+  buf = crypto.pseudoRandomBytes 15
   # URL- and hostname-safe strings.
   bucket_name = buf.toString 'base64' .replace /\+/g, '0' .replace /\//g, '1'
   cb null, bucket_name

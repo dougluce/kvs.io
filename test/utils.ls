@@ -24,11 +24,11 @@ export clients = (port = 8088, host = "127.0.0.1") ->
   client := restify.createStringClient do
     * version: '*'
       url: "http://#host:#port"
-      
+
   json_client := restify.createJsonClient do
     * version: '*'
       url: "http://#host:#port"
-  
+
   riak_client :=
     riak_client := new Riak.Client ['127.0.0.1']
 
@@ -45,7 +45,7 @@ export bucket_metadata = (bucket, done) ->
     done null, JSON.parse value.value.toString 'utf8'
   catch # works in dev
     done null, value
-  
+
 
 export mark_bucket = (bucket, done) ->
   # Mark this bucket as being a test one.
@@ -55,7 +55,7 @@ export mark_bucket = (bucket, done) ->
   # and globally, for later cleanup.
   <- commands.storeValue BUCKETLIST, bucket, "Run on #{os.hostname!} at #now"
   done!
-  
+
 export unmark_bucket = (bucket, done) ->
   err <- riak_client.deleteValue do
     * bucket: bucket
@@ -75,6 +75,30 @@ export markedbucket = (mark, done) ->
     done bucket
   else
     done bucket
+
+# Delete everything in a bucket
+# Accesses riak directly!
+export deleteall = (bucket, done) ->
+  keys = []
+  <- async.doWhilst (cb) ->
+    err, result <- riak_client.secondaryIndexQuery do
+      * bucket: bucket
+        indexName: '$bucket'
+        indexKey: '_'
+        stream: false
+    expect err, "deleteall from #bucket #err" .to.be.null
+    keys := [..objectKey for result.values]
+    async.eachLimit keys, 5, (key, done) ->
+      err, result <- riak_client.deleteValue do
+        * bucket: bucket
+          key: key
+      done!
+    , cb
+  , ->
+    keys.length > 0
+  err <- delete_bucket bucket, "deleteall"
+  expect err, "delbucket #err" .to.be.null
+  done!
 
 export delete_bucket = (bucket, tag, cb) ->
   # Convenient.
@@ -101,30 +125,6 @@ export delete_key = (bucket, key, tag, cb) ->
       key: key
   expect err, tag .to.be.null
   cb!
-
-# Delete everything in a bucket
-# Accesses riak directly!
-export deleteall = (bucket, done) ->
-  keys = []
-  <- async.doWhilst (cb) ->
-    err, result <- riak_client.secondaryIndexQuery do
-      * bucket: bucket
-        indexName: '$bucket'
-        indexKey: '_'
-        stream: false
-    expect err, "deleteall from #bucket #err" .to.be.null
-    keys := [..objectKey for result.values]
-    async.eachLimit keys, 5, (key, done) ->
-      err, result <- riak_client.deleteValue do
-        * bucket: bucket
-          key: key
-      done!
-    , cb
-  , ->
-    keys.length > 0
-  err <- delete_bucket bucket, "deleteall"
-  expect err, "delbucket #err" .to.be.null
-  done!
 
 export cull_test_buckets = (done) ->
   async.each test_buckets, (bucket, done) ->

@@ -41,20 +41,10 @@ describe "Commands" ->
       <- utils.delete_bucket newbucket, "scab"
       done!
   
-    specify 'crypto error on bucket creation' sinon.test (done) ->
-      @stub crypto, "pseudoRandomBytes", (count, cb) ->
-        cb "Crypto error"
-      user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", "ceobc test", null
-      expect user,"newbucket cryptoerror" .to.be.null
-      expect err .to.equal 'Crypto error'
-      expect newbucket .to.be.undefined
-      <- utils.delete_bucket newbucket, "scab"
-      done!
-  
     specify 'Bad bucket creation error' sinon.test (done) ->
       samebucket = "INEXPLICABLYSAMERANDOMDATA"
-      @stub crypto, "pseudoRandomBytes", (count, cb) ->
-        cb null, samebucket
+      @stub crypto, "pseudoRandomBytes", (count) ->
+        samebucket
       user, err, newbucket <- commands.newbucket  "Info string", "192.231.221.257", 'bbce test', null
       expect user,"bbce" .to.equal newbucket
       expect err .to.equal null

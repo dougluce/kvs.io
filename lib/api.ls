@@ -193,7 +193,6 @@ makeHandler = (url, command) ->
       res.send command.success, result
       params.pop! # Remove callback for reporting.
       logger.info params, "api: name"
-
     command.apply null, params
 
 makeroutes = (server) ->
