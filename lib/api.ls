@@ -13,6 +13,7 @@ require! {
   'media-type'
   contenttype
   path
+  'bunyan-logstash'
 }
 
 logger = null
@@ -284,6 +285,10 @@ export init = (server, logobj) ->
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
+logStash = bunyanLogstash.createStream do
+  * host: 'logger.kvs.io'
+    port: 9399
+
 if is_prod
   logpath = "#{process.env.HOME}/logs"
   bunyan.defaultStreams :=
@@ -295,9 +300,18 @@ else
   prettyStdOut = new PrettyStream!
   prettyStdOut.pipe process.stderr
   bunyan.defaultStreams :=
-    * level: 'debug',
+    * level: 'debug'
       path: "/tmp/kvsio-debug.log"
-    * level: 'debug',
+    * level: 'debug'
+      type: 'raw'
+      stream: logStash
+    * level: 'error'
+      type: 'raw'
+      stream: logStash
+    * level: 'info'
+      type: 'raw'
+      stream: logStash
+    * level: 'debug'
       type: 'raw'
       stream: prettyStdOut
     
@@ -383,7 +397,7 @@ export standalone = ->
       * log: bunyan.getLogger 'api'
     init secure_server
 
-    <- secure_server.listen if is_prod then 443 else 8081
+    <- secure_server.listen if is_prod then 443 else 8880
     secure_server.server.on 'connect' handle_connect
     logger.info '%s listening at %s', secure_server.name, secure_server.url
 
