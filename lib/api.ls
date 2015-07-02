@@ -294,8 +294,14 @@ if is_prod
   bunyan.defaultStreams :=
     * level: 'error',
       path: "#logpath/kvsio-error.log"
+    * level: 'error'
+      type: 'raw'
+      stream: logStash
     * level: 'info',
       path: "#logpath/kvsio-access.log"
+    * level: 'info'
+      type: 'raw'
+      stream: logStash
 else
   prettyStdOut = new PrettyStream!
   prettyStdOut.pipe process.stderr
