@@ -411,5 +411,4 @@ if !module.parent # Run stand-alone
   standalone!
 
 unless process.env.NODE_ENV?
-  process.stderr.write "NODE_ENV needs to be set\n"
-  process.exit 1
+  process.env.NODE_ENV = "development"
