@@ -227,7 +227,7 @@ describe "CLI rodeo" ->
 
   specify "Fire off 10 simple transactions" (done) ->
     err, clis <- async.times 10, new_cli
-    expect err, "su1oe" .to.be.undefined
+    expect err, "su1oe" .to.not.exist
     err, results <- async.map clis, (client, cb) ->
       data <- client.send 'newbucket', 2
       expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
@@ -241,13 +241,13 @@ describe "CLI rodeo" ->
       data <- client.send "delkey #bucket bucketname", 1
       expect data, 'su1oe5' .to.eql ['>']
       cb!
-    expect err, "su1oe2" .to.be.undefined
+    expect err, "su1oe2" .to.not.exist
     done!
     
   specify "A whole lotta listening" (done) ->
     lbuckets = {}
     err, listeners <- async.times 10, new_cli
-    expect err, "awll" .to.be.undefined
+    expect err, "awll" .to.not.exist
     err, results <- async.map listeners, (listener, cb) ->
       data <- listener.send 'newbucket', 2
       expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
@@ -261,7 +261,7 @@ describe "CLI rodeo" ->
             '>'
         delete lbuckets[bucket]
       cb!
-    expect err, "awll3" .to.be.undefined
+    expect err, "awll3" .to.not.exist
 
     err, clis <- async.map listeners, (listener, cb) ->
       <- setTimeout _, Math.random! * 50

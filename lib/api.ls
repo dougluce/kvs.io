@@ -14,16 +14,13 @@ require! {
   contenttype
   path
   'bunyan-logstash'
+  './swagger': {swagger, swaggerOperation}
+  './common': {errors}
 }
 
 logger = null
 
 is_prod = process.env.NODE_ENV == 'production'
-
-errors = 
-  'bucket already exists': [restify.InternalServerError, "cannot create bucket."]
-  'not found': [restify.NotFoundError, "Entry not found."]
-  'not empty': [restify.ForbiddenError, "Remove all keys from the bucket first."]
 
 handle_error = (err, next, good) ->
   return next new that.0 that.1 if errors[err]
@@ -31,120 +28,6 @@ handle_error = (err, next, good) ->
   good! # If there's no error, continue on!
   next!
   
-export swagger = 
-  * swagger: "2.0"
-    info:
-      title: "The kvs.io API",
-      description: """
-# A simple, reliable, and fast key-value store.
-
-The kvs.io service provides a globally accessible key-value store
-organized into buckets and stored redundantly.
-
-This service lets you store data securely using only browser-based
-HTML without the need for any complex set-up.
-
-The first principle of kvs.io is simplicity. The regular API gives you
-all the semantic power of REST. The simple API lets you stuff
-parameters into the URL for a normal HTTP GET or send them as form
-data with a POST.  All calls may be made via HTTP or HTTPS (use of
-HTTPS is STRONGLY recommended).
-
-The second principle of kvs.io is reliability.  Redundant front-ends
-keep availability high.  Each key-value pair is stored on at least
-three separate back-end servers.
-
-The third princple of kvs.io is speed.  A single, simple HTTP
-transaction is all it takes.  Your bucket name is your key to the
-system, and there is no need to go through an authentication
-transaction.  One hit in, one response out.
-
-kvs.io supports two broad styles of interaction.  The RESTful
-interface provides varying methods acting on resources in the usual
-REST way.  The simple interface lets you build your application using
-only GET or POST directives and simple URL or form body based data
-exchanges.  You may use any combination of any of these methods as is
-necessary to support your application.
-
-""",
-      version: "0.1"
-    consumes: ["text/plain; charset=utf-8", "application/json"]
-    produces: ["text/plain; charset=utf-8", "application/json"]
-    basePath: "/"
-    paths: {}
-
-
-# Template for a single operation.
-#
-# Encompasses both REST and simple forms.
-#
-# Simple form is all URL based
-
-swaggerOperation = (commandname, cmd) ->
-  path = commandname
-  restPath = []
-  getParams = []
-  postParams = []
-  restParams = []
-  for cmdparam in cmd.params
-    continue if cmdparam['x-private']
-    param = {} <<<< cmdparam
-    path += "/{#{param.name}}" if param.in not in ['query']
-    restPath.push "{#{param.name}}" if param.required and param.in not in ['query', 'body']
-
-    restParam = {} <<<< param
-    if not param.in
-      restParam <<< 
-        in: if param.required then 'path' else 'query'
-        type: 'string'
-    restParams.push restParam
-    delete param.schema
-
-    getParams.push ({} <<<< param) <<< do
-      in: if param.in == 'query' then 'query' else 'path'
-      type: 'string'
-
-    postParams.push ({} <<<< param) <<< do
-      in: 'formData'
-      type: 'string'
-
-  operation = 
-    * summary: cmd.summary
-      description: cmd.description
-      responses:
-        "#{cmd.success}":
-          description: "Successful request."
-        500:
-          description: "Internal server error."
-
-  for error in cmd.errors
-    operation.responses <<<
-       "#{new errors[error][0]!statusCode}":
-         description: errors[error][1]
-
-  getOp = ({} <<<< operation) <<<
-    tags: ["simple:#{cmd.group}"]
-    operationId: "get#commandname"
-  getOp.parameters = getParams if getParams.length > 0
-
-  postOp = ({} <<<< operation) <<<
-    tags: ["simple:#{cmd.group}"]
-    operationId: "post#commandname"
-  postOp.parameters = postParams if postParams.length > 0
-
-  swagger.paths.{}"/#path".get = getOp
-  swagger.paths.{}"/#commandname".post = postOp
-
-  if cmd.rest
-    restOp = ({} <<<< operation) <<<
-      tags: ["rest:#{cmd.group}"]
-      operationId: "rest#commandname"
-    restOp.parameters = restParams if restParams.length > 0
-    restPath = '/' + restPath.join '/'
-    method = cmd.rest[0]
-    method = 'delete' if method == 'del'
-    swagger.paths.{}"#restPath".[method] = restOp
-
 rh = 0
 function setHeader req, res, next
   res.setHeader 'Server' 'kvs.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
@@ -388,14 +271,21 @@ export standalone = ->
   logger.info '%s listening at %s', server.name, server.url
 
   # HTTPS server
-  options <<<
-    spdy:
+  spdy = 
+      ciphers: 'ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:AES128-GCM-SHA256:HIGH:!MD5:!aNULL'
+      honorCipherOrder: true
+
+  spdy <<<<
+    if is_prod
       cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
       key: fs.readFileSync '/etc/ssl/kvs.io.key'
       ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
-      ciphers: 'ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:AES128-GCM-SHA256:HIGH:!MD5:!aNULL'
+    else
+      cert: fs.readFileSync './devkeys/self-ssl.crt'
+      key: fs.readFileSync './devkeys/self-ssl.key'
+      ca: fs.readFileSync './devkeys/self-ssl.crt'
 
-      honorCipherOrder: true
+  options.spdy = spdy
 
   if options['spdy']
     secure_server = restify.createServer options

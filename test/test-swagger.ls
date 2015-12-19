@@ -5,6 +5,7 @@ require! {
   'swagger-tools': {specs: {v2: spec}}
   './utils'
   '../lib/api'
+  '../lib/swagger': {swagger}
 }
 
 describe "Swagger API" ->
@@ -27,9 +28,8 @@ describe "Swagger API" ->
     sandbox.restore!
     done!
 
-  specify.only "should validate" (done) ->
-
-    spec.validate api.swagger, (err, result) ->
+  specify "should validate" (done) ->
+    spec.validate swagger, (err, result) ->
       throw err if err
       unless result?
         return done!
