@@ -34,12 +34,3 @@ describe "Swagger API" ->
       unless result?
         return done!
       expect result.errors, "ouch, errors" .to.eql []
-    
-    #  if result.warnings.length > 0
-    #    console.log 'Warnings'
-    #    console.log '--------'
-    #    result.warnings.forEach (warn) ->
-    #      console.log '#/' + warn.path.join('/') + ': ' + warn.message
-    #
-    #  if result.errors.length > 0
-    #    process.exit 1

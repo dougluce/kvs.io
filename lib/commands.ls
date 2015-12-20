@@ -87,7 +87,8 @@ bvalue =
   name: 'b'
   description: "B-value, passed on to callbacks"
   required: false
-
+  in: 'query'
+  type: 'string'
 
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
@@ -189,6 +190,7 @@ listkeys.params =
     required: false
     in: 'query'
     type: 'string'
+  * bvalue
 listkeys.rest = ['get', /^\/([^\/]{20})$/]
 listkeys.mapparams = { '0': 'bucket', '1': 'keycontains' }
 listkeys.success = 200
@@ -438,12 +440,13 @@ register_callback.params =
     description: "The bucket to register a callback on."
     required: true
   * name: 'url'
-    description: "The URL to fire on bucke change"
+    description: "The URL to fire on bucket change"
     required: true
     in: 'query'
     type: 'string'
   * bvalue
-register_callback.rest = ['put', '/:bucket/:url']
+register_callback.rest = ['put', '/callback/:bucket']
+register_callback.restpath = 'callback'
 register_callback.success = 201
 register_callback.errors =
   * 'not found'
