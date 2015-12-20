@@ -263,7 +263,7 @@ do_parse = (line, rl, socket, cb) ->
       w "Not enough arguments."
       return rl.prompt!
     # Add the callback to the end.
-    pp.push (err, result) ->
+    pp.push (user, err, result) ->
       if err
         w err
       else

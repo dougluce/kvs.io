@@ -12,6 +12,19 @@ MAXVALUELENGTH = 65536
 export BUCKET_LIST = 'buckets'
 riak_client = null # Here to allow stubbing by tests.
 
+#
+# A Command is an exported function that has a params property.
+# It'll take some number of arguments, the last of which is a callback.
+#
+# The first argument to the callback is either null or a bucket name
+# which identifies the user involved in the operation.
+#
+# The second argument to the callback is the error state, null if
+# there's no error.
+#
+# This is followed by return values, if any.
+#
+
 randomString = (cb) ->
   ex, buf <- crypto.randomBytes 15
   return cb ex if ex
@@ -58,13 +71,13 @@ confirm_no_error = (err, result, next, cb) ->
 
 confirm_exists = (bucket, cb, rest) ->
   err, result <- fetchValue BUCKET_LIST, bucket
-  return cb err if err
-  return cb 'not found' if result.isNotFound
+  return cb bucket, err if err
+  return cb bucket, 'not found' if result.isNotFound
   rest!
 
-confirm_found = (err, result, cb, rest) ->
-  return cb err if err
-  return cb 'not found' if not result or result.isNotFound
+confirm_found = (bucket, err, result, cb, rest) ->
+  return cb bucket, err if err
+  return cb bucket, 'not found' if not result or result.isNotFound
   rest!
 
 export init = ->
@@ -88,11 +101,11 @@ firecallbacks = (bucket, func, ...args) ->
 
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
-  return cb ex if ex
+  return cb null, ex if ex
   # Does this bucket exist?
   err, result <- fetchValue BUCKET_LIST, bucket_name
-  return cb err if err
-  return cb 'bucket already exists', bucket_name if not result.isNotFound
+  return cb bucket_name, err if err
+  return cb bucket_name, 'bucket already exists', bucket_name if not result.isNotFound
   # Mark this bucket as taken and record by whom.
   bucket_info = 
     ip: ip
@@ -100,7 +113,7 @@ export newbucket = (info, ip, test, b, cb) ->
     info: info # Additional info identifying bucket creator
   bucket_info['test'] = test if test
   <- storeValue BUCKET_LIST, bucket_name, bucket_info
-  cb null, bucket_name
+  cb bucket_name, null, bucket_name
 
 newbucket.group = 'buckets'
 newbucket.params =
@@ -171,7 +184,9 @@ export listkeys = (bucket, keycontains, b, cb) ->
           values := [..objectKey for result.values when ..objectKey.toLowerCase!indexOf(keycontains) != -1]
         else
           values := [..objectKey for result.values]
-      <- confirm_no_error err, values, cb
+      ret = (err, result) ->
+        cb bucket, err, result
+      <- confirm_no_error err, values, ret
       listkeys bucket, keycontains, b, cb
 
 listkeys.group = 'buckets'
@@ -209,14 +224,14 @@ listkeys.returnformatter = (w, keys) ->
 export delbucket = (bucket, b, cb) ->
   <- confirm_exists bucket, cb
   # Is there anything in the bucket?
-  err, values <- listkeys bucket, null, null
-  return cb 'not empty' if values.length > 0
+  _, err, values <- listkeys bucket, null, null
+  return cb bucket, 'not empty' if values.length > 0
   # Nope, delete it.
   err, result <- riak_client.deleteValue do
     * bucket: BUCKET_LIST
       key: bucket
-  <- confirm_found err, result, cb
-  cb null
+  <- confirm_found bucket, err, result, cb
+  cb bucket, null
 
 delbucket.group = 'buckets'
 delbucket.params =
@@ -246,7 +261,7 @@ export setkey = (bucket, key, value, b, cb) ->
     ..setContentType 'text/plain'
     ..setValue value
   callbacks.firecallbacks bucket, "setkey", key, value, b
-  cb null
+  cb bucket, null
 
 setkey.errors =
   * 'not found'
@@ -292,15 +307,15 @@ are truncated before storing.
 export newkey = (bucket, value, b, cb) ->
   <- confirm_exists bucket, cb
   ex, key <- randomString
-  return cb ex if ex
+  return cb bucket, ex if ex
   # See if it exists
   err, result <- fetchValue bucket, key
-  return cb err if err
-  return cb 'bad error' if not result.isNotFound
+  return cb bucket, err if err
+  return cb bucket, 'bad error' if not result.isNotFound
   <- storeValue bucket, key, with new Riak.Commands.KV.RiakObject!
     ..setContentType 'text/plain'
     ..setValue value
-  cb null, key
+  cb bucket, null, key
 
 newkey.errors =
   * 'not found'
@@ -356,11 +371,11 @@ export getkey = (bucket, keys, b, cb) ->
       result.values[0].getValue!toString 'utf8'
     done!
   , (err) ->
-    return cb err if err
-    return cb 'not found' if found == 0
+    return cb bucket, err if err
+    return cb bucket, 'not found' if found == 0
     if keylist.length == 1
       results := results[keylist[0]]
-    cb null, results
+    cb bucket, null, results
 
 getkey.group = 'keys'
 getkey.params =
@@ -389,12 +404,12 @@ export delkey = (bucket, key, b, cb) ->
   <- confirm_exists bucket, cb
   # Does the entry exist?
   err, result <- fetchValue bucket, key
-  <- confirm_found err, result, cb
+  <- confirm_found bucket, err, result, cb
   err, result <- riak_client.deleteValue do
     * bucket: bucket
       key: key
-  <- confirm_found err, result, cb
-  cb null
+  <- confirm_found bucket, err, result, cb
+  cb bucket, null
 
 delkey.group = 'keys'
 delkey.params =
@@ -423,7 +438,8 @@ gone forever.
 
 export register_callback = (bucket, url, b, cb) ->
   <- confirm_exists bucket, cb
-  callbacks.register bucket, url, cb
+  err <- callbacks.register bucket, url
+  cb bucket, err
 
 register_callback.group = 'buckets'
 register_callback.params =
@@ -473,7 +489,8 @@ Macros supported:
 """
 
 export list_callbacks = (bucket, b, cb) ->
-  callbacks.list bucket, cb
+  err, result <- callbacks.list bucket
+  cb bucket, err, result
 
 list_callbacks.group = 'buckets'
 list_callbacks.params =
@@ -502,7 +519,8 @@ list_callbacks.returnformatter = (w, callbacks) ->
     w key
 
 export delete_callback = (bucket, url, b, cb) ->
-  callbacks.remove bucket, url, cb
+  err <- callbacks.remove bucket, url
+  cb bucket, err
 
 delete_callback.group = 'buckets'
 delete_callback.params =
@@ -530,7 +548,8 @@ Remove the given URL from the list of bucket callbacks.
 
 export listen = (bucket, b, cb) ->
   <- confirm_exists bucket, cb
-  callbacks.listen bucket, cb
+  err, message <- callbacks.listen bucket
+  cb bucket, err, message
 
 listen.group = 'buckets'
 listen.params =

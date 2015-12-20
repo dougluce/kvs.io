@@ -188,12 +188,12 @@ makeHandler = (command) ->
     unless params
       return res.send 400, "params incorrect"
     # The callback.
-    params.push (err, result) ->
+    params.push (user, err, result) ->
       <- handle_error err, next
       res.send command.success, result
       params.pop! # Remove callback for reporting.
       logger.info params, "api: name"
-    command.apply null, params
+    user = command.apply null, params
 
 makeroutes = (server) ->
   for let commandname, command of commands when command.params

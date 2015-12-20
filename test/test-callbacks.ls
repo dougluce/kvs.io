@@ -43,16 +43,16 @@ describe 'Callbacks' ->
       done!
 
     specify 'should register a callback' (done) ->
-      err <- commands.register_callback bucket, 'http://localhost', null
+      _, err <- commands.register_callback bucket, 'http://localhost', null
       expect err,err .to.be.null
       done!
 
     specify 'should list callbacks' (done) ->
-      err <- commands.register_callback bucket, 'http://localhost/one', null
+      _, err <- commands.register_callback bucket, 'http://localhost/one', null
       expect err,err .to.be.null
-      err <- commands.register_callback bucket, 'http://localhost/two', null
+      _, err <- commands.register_callback bucket, 'http://localhost/two', null
       expect err,err .to.be.null
-      err, callbacks <- commands.list_callbacks bucket, null
+      _, err, callbacks <- commands.list_callbacks bucket, null
       expect err,err .to.be.null
       expect callbacks, 'slc' .to.eql do
         'http://localhost/one': { data: null, log: [], method: 'POST' }
@@ -60,12 +60,12 @@ describe 'Callbacks' ->
       done!
 
     specify 'should delete a callback' (done) ->
-      err <- commands.register_callback bucket, 'http://localhost/three', null
+      _, err <- commands.register_callback bucket, 'http://localhost/three', null
       expect err,err .to.be.null
-      err <- commands.register_callback bucket, 'http://localhost/four', null
+      _, err <- commands.register_callback bucket, 'http://localhost/four', null
       expect err,err .to.be.null
-      err <- commands.delete_callback bucket, 'http://localhost/four', null
-      err, callbacks <- commands.list_callbacks bucket, null
+      _, err <- commands.delete_callback bucket, 'http://localhost/four', null
+      _, err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sdac' .to.eql do
         'http://localhost/three': { data: null, log: [], method: 'POST' }
         ...
@@ -75,11 +75,11 @@ describe 'Callbacks' ->
       timeout_scale = 100
       if process.env.NODE_ENV == 'test'
         timeout_scale := 200
-      err <- commands.register_callback bucket, callback_url + "?morphal", null
+      _, err <- commands.register_callback bucket, callback_url + "?morphal", null
       expect err,err .to.be.null
-      err <- commands.setkey bucket, "key", "data", "whatsup"
+      _, err <- commands.setkey bucket, "key", "data", "whatsup"
       <- setTimeout _, timeout_scale
-      err, callbacks <- commands.list_callbacks bucket, null
+      _, err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sfaroc' .to.eql do
         * "#{callback_url}?morphal": { data: null, log: [{body: "Something /?morphal", status: 200}], method: 'POST' }
         ...
@@ -90,19 +90,19 @@ describe 'Callbacks' ->
       if process.env.NODE_ENV == 'test'
         timeout_scale := 100
       @timeout timeout_scale * 50
-      err <- commands.register_callback bucket, callback_url + "?first", null
+      _, err <- commands.register_callback bucket, callback_url + "?first", null
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      err <- commands.register_callback bucket, callback_url + "?second", null
+      _, err <- commands.register_callback bucket, callback_url + "?second", null
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      err <- commands.setkey bucket, "key", "data", "whatsup"
+      _, err <- commands.setkey bucket, "key", "data", "whatsup"
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale
-      err <- commands.setkey bucket, "key", "data", "whatdown"
+      _, err <- commands.setkey bucket, "key", "data", "whatdown"
       expect err,err .to.be.null
       <- setTimeout _, timeout_scale * 2
-      err, callbacks <- commands.list_callbacks bucket, null
+      _, err, callbacks <- commands.list_callbacks bucket, null
       expect callbacks, 'sfmc' .to.eql do
         * "#{callback_url}?first":
             data: null

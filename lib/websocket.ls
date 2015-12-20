@@ -8,7 +8,7 @@ require! {
 #logger = bunyan.getLogger 'websocket'
 
 handle_return = (ws) ->
-  (err, result) ->
+  (user, err, result) ->
     return ws.send JSON.stringify {errors: [err], success: false} if err
     o = {}
     o.result = result if result
