@@ -172,7 +172,7 @@ export additional_facts = ->
     facts['test'] = "env #{process.env.NODE_ENV}"
   facts
 
-makeHandler = (command) ->
+makeHandler = (url, command) ->
   (req, res, next) ->
     params = {} <<<< req.params
     if command.mapparams
@@ -193,14 +193,15 @@ makeHandler = (command) ->
       res.send command.success, result
       params.pop! # Remove callback for reporting.
       logger.info params, "api: name"
-    user = command.apply null, params
+
+    command.apply null, params
 
 makeroutes = (server) ->
   for let commandname, command of commands when command.params
     # The route handler.
     # Simple form.
     getUrl = "/#commandname"
-    handler = makeHandler command
+    handler = makeHandler getUrl, command
     for param in command.params
       continue if param['x-private']
       unless param['required']

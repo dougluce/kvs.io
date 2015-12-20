@@ -7,7 +7,7 @@ require! {
 
 #logger = bunyan.getLogger 'websocket'
 
-handle_return = (ws) ->
+handle_return = (command_name, ws) ->
   (user, err, result) ->
     return ws.send JSON.stringify {errors: [err], success: false} if err
     o = {}
@@ -41,5 +41,5 @@ export accept_upgrade = (req, socket, head) ->
         else pp.push null
       unless errors.length == 0
         return ws.send JSON.stringify {errors: errors, success: false}
-      pp.push handle_return ws
+      pp.push handle_return o.command, ws
       command.apply commands, pp
