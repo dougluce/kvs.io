@@ -24,8 +24,6 @@ logger = null
 unless process.env.NODE_ENV?
   process.env.NODE_ENV = "development"
 
-is_prod = process.env.NODE_ENV == 'production'
-
 config = config[process.env.NODE_ENV]
 
 handle_error = (err, next, good) ->
@@ -36,7 +34,7 @@ handle_error = (err, next, good) ->
 
 rh = 0
 function setHeader req, res, next
-  res.setHeader 'Server' config.serverName + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
+  res.setHeader 'Server' config.hostname + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
   next!
 
 #
@@ -138,7 +136,7 @@ export init = (server, logobj) ->
   makeroutes server
   server.get /^(|\/|\/index.html|\/favicon.ico|\/w\/|\/w|\/w\/.*)$/ web_proxy
   
-  host = config.serverName + ':' + server.address!?port
+  host = config.hostname + ':' + server.address!?port
   callbacks.set_listen_port server.address!?port
   server.get "/swagger/resources.json" (req, res) ->
     res.send swagger <<< host: host
@@ -221,9 +219,9 @@ handle_connect = (req, socket, head) ->
   socket.end! # Not a proper connect, give it up.
 
 export standalone = ->
-  if is_prod
+  if config.pidFile
     try
-      pid = npid.create '/var/run/kvsio/kvsio.pid', true # Force pid creation
+      pid = npid.create config.pidFile, true # Force pid creation
       pid.removeOnExit!
     catch err
       console.log err
@@ -231,8 +229,8 @@ export standalone = ->
 
   logger := bunyan.getLogger 'api'
 
-  if process.env.NODE_ENV not in ['production', 'test']
-    logger.info "NOT PROD OR TEST -- RUNNING IN FAKE RIAK MODE"
+  if config.stubRiak
+    logger.info "Stubbing riak for test"
     require! {
       '../test/utils': {stub_riak_client}
       sinon
@@ -247,43 +245,34 @@ export standalone = ->
     ..on 'after' restify.auditLogger do
       * log: logger
 
-  <- server.listen if is_prod then 80 else 8080
+  <- server.listen config.webPort || 80
   init server
 
-  cli.init! # Fire up the CLI system.
-  cli.start_telnetd process.env.TELNET_PORT || if is_prod then 23 else 7002
+  if config.cliPort
+    cli.init! # Fire up the CLI system.
+    cli.start_telnetd config.cliPort
 
   server.server.on 'connect' handle_connect
 
   logger.info '%s listening at %s', server.name, server.url
 
   # HTTPS server
-  spdy = 
+  if config.spdy
+    options.spdy = 
       ciphers: 'ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:AES128-GCM-SHA256:HIGH:!MD5:!aNULL'
       honorCipherOrder: true
+      cert: fs.readFileSync config.spdy.cert
+      key: fs.readFileSync config.spdy.key
+      ca: fs.readFileSync config.spdy.ca
 
-  spdy <<<<
-    if is_prod
-      cert: fs.readFileSync '/etc/ssl/kvs.io.crt'
-      key: fs.readFileSync '/etc/ssl/kvs.io.key'
-      ca: fs.readFileSync '/etc/ssl/kvs.io.crt'
-    else
-      cert: fs.readFileSync './devkeys/self-ssl.crt'
-      key: fs.readFileSync './devkeys/self-ssl.key'
-      ca: fs.readFileSync './devkeys/self-ssl.crt'
-
-  options.spdy = spdy
-
-  if options['spdy']
     secure_server = restify.createServer options
     secure_server.on 'after' restify.auditLogger do
       * log: bunyan.getLogger 'api'
     init secure_server
 
-    <- secure_server.listen if is_prod then 443 else 8880
+    <- secure_server.listen config.spdy.port || 443
     secure_server.server.on 'connect' handle_connect
     logger.info '%s listening at %s', secure_server.name, secure_server.url
 
 if !module.parent # Run stand-alone
   standalone!
-

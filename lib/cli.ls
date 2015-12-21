@@ -5,15 +5,19 @@ require! {
   os
   ipv6
   bunyan
+  '../config.json'
 }
 
-global_facts = logger = null
+logger = null
+
+unless process.env.NODE_ENV?
+  process.env.NODE_ENV = "development"
+
+config = config[process.env.NODE_ENV]
 
 # In-memory per-socket information
 
 socket_facts = {}
-
-is_prod = process.env.NODE_ENV == 'production'
 
 shortcuts = 
   '?': 'help'
@@ -69,11 +73,11 @@ export init = (new_cli_commands = commands) ->
 export start_telnetd = (port) ->
   # For telnet version
   telnet_server = net.createServer accept_telnet_connection
-  telnet_server.maxConnections = 20;
-  telnet_server.listen port
-  telnet_server.on 'connection', (conn) -> # For testing
-    @last_conn = conn
-  logger.info "Telnet server started on #{telnet_server.address!port}"
+  telnet_server.maxConnections = 20
+  telnet_server.listen port, ->
+    logger.info "Telnet server started on #{telnet_server.address!port}"
+    telnet_server.on 'connection', (conn) -> # For testing
+      @last_conn = conn
   return telnet_server
 
 module.exports.banner = banner = "Welcome to kvs.io.  Type 'help' for help."
@@ -311,7 +315,7 @@ accept_telnet_connection = (socket) ->
     info: "Via Telnet [#{os.hostname!} #my_ip]"
     ip: socket.remoteAddress
     fd: socket._handle?fd
-  unless is_prod
+  if config.logEnv
     facts['test'] = "env #{process.env.NODE_ENV}"
     
   logger.info {} <<< facts, "connect"
