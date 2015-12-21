@@ -1,13 +1,11 @@
 {
   "name": "kvs.io",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.5.0",
   "description": "kvs.io",
   "main": "api.ls",
   "scripts": {
-    "start": "nodemon -L -e ls --exec lsc kvs.io.ls",
-    "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
-    "testmon": "nodemon -L -e ls,json --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
+    "start": "lsc kvs.io.ls",
+    "test": "NODE_ENV=development mocha --compilers ls:LiveScript"
   },
   "bin": {
     "kvs.io": "./kvs.io.ls",

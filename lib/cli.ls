@@ -11,7 +11,7 @@ require! {
 logger = null
 
 unless process.env.NODE_ENV?
-  process.env.NODE_ENV = "development"
+  process.env.NODE_ENV = "production"
 
 config = config[process.env.NODE_ENV]
 
