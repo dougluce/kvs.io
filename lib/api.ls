@@ -16,21 +16,27 @@ require! {
   'bunyan-logstash'
   './swagger': {swagger, swaggerOperation}
   './common': {errors}
+  '../config.json'
 }
 
 logger = null
 
+unless process.env.NODE_ENV?
+  process.env.NODE_ENV = "development"
+
 is_prod = process.env.NODE_ENV == 'production'
+
+config = config[process.env.NODE_ENV]
 
 handle_error = (err, next, good) ->
   return next new that.0 that.1 if errors[err]
   return next new restify.InternalServerError err if err # May leak errors externally
   good! # If there's no error, continue on!
   next!
-  
+
 rh = 0
 function setHeader req, res, next
-  res.setHeader 'Server' 'kvs.io' + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
+  res.setHeader 'Server' config.serverName + unless (rh := (rh + 1) % 10) then ' -- try CONNECT for kicks' else ''
   next!
 
 #
@@ -49,13 +55,6 @@ resolve = (req, params, facts) ->
     return null
   return newparams
 
-# exported for testing purposes.
-export additional_facts = ->
-  facts = {}
-  unless is_prod
-    facts['test'] = "env #{process.env.NODE_ENV}"
-  facts
-
 makeHandler = (url, command) ->
   (req, res, next) ->
     params = {} <<<< req.params
@@ -67,7 +66,6 @@ makeHandler = (url, command) ->
     facts = params with 
       info: req.headers
       ip: ipware!get_ip req
-    facts <<< exports.additional_facts!
     params = resolve req, command.params, facts
     unless params
       return res.send 400, "params incorrect"
@@ -140,11 +138,8 @@ export init = (server, logobj) ->
   makeroutes server
   server.get /^(|\/|\/index.html|\/favicon.ico|\/w\/|\/w|\/w\/.*)$/ web_proxy
   
-  host = 'kvs.io'
-  unless is_prod
-    if server.address!?port
-      host = 'localhost:' + that
-      callbacks.set_listen_port that
+  host = config.serverName + ':' + server.address!?port
+  callbacks.set_listen_port server.address!?port
   server.get "/swagger/resources.json" (req, res) ->
     res.send swagger <<< host: host
 
@@ -168,51 +163,45 @@ export init = (server, logobj) ->
   req, res, route, err <- server.on 'uncaughtException' 
   throw err
 
-logStash = bunyanLogstash.createStream do
-  * host: 'logger.kvs.io'
-    port: 9399
+#
+# Set up logging.  Supports logstash, files, and stdout (for
+# debugging)
+#
 
-if is_prod
-  logpath = "#{process.env.HOME}/logs"
-  bunyan.defaultStreams :=
-    * level: 'error',
-      path: "#logpath/kvsio-error.log"
-    * level: 'error'
-      type: 'raw'
-      stream: logStash
-    * level: 'info',
-      path: "#logpath/kvsio-access.log"
-    * level: 'info'
-      type: 'raw'
-      stream: logStash
-else
+bunyan.defaultStreams := []
+
+if config.debugStdout
   prettyStdOut = new PrettyStream!
   prettyStdOut.pipe process.stderr
-  bunyan.defaultStreams :=
-    * level: 'debug'
-      path: "/tmp/kvsio-debug.log"
-    * level: 'debug'
-      type: 'raw'
-      stream: logStash
-    * level: 'error'
-      type: 'raw'
-      stream: logStash
-    * level: 'info'
-      type: 'raw'
-      stream: logStash
+  bunyan.defaultStreams.push do
     * level: 'debug'
       type: 'raw'
       stream: prettyStdOut
-    
+
+if config.logStash
+  logStash = bunyanLogstash.createStream do
+    * host: config.logStash.host
+      port: config.logStash.port
+  for level in config.logStash.levels
+    bunyan.defaultStreams.push do
+      * level: level
+        type: 'raw'
+        stream: logStash
+
+for logLevel in <[ debug error info ]>
+  if config["#{logLevel}Log"]
+    bunyan.defaultStreams.push do
+      * level: logLevel
+        path: config["#{logLevel}Log"]
+
 bunyan.getLogger = (name) ->
   log = if bunyan.defaultStreams
     bunyan.createLogger name: name, streams: bunyan.defaultStreams
   else
     bunyan.createLogger name: name
 
-  if is_prod
-    process.on 'SIGUSR2' ->
-      log.reopenFileStreams!
+  process.on 'SIGUSR2' ->
+    log.reopenFileStreams!
 
   log
 
@@ -226,8 +215,6 @@ handle_connect = (req, socket, head) ->
       socket._handle?fd
     else
       "unknown FD"
-    unless is_prod
-      facts['test'] = "env #{process.env.NODE_ENV}"
     logger.info facts, "connect"
     cli.register_facts socket, facts
     return cli.cli_open socket
@@ -300,5 +287,3 @@ export standalone = ->
 if !module.parent # Run stand-alone
   standalone!
 
-unless process.env.NODE_ENV?
-  process.env.NODE_ENV = "development"

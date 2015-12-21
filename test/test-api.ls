@@ -36,7 +36,7 @@ describe "API" ->
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
     logstub = sandbox.stub logger
-    s, c, j <- utils.startServer 8088
+    s, c, j <- utils.startServer
     [server, client, json_client] := [s, c, j]
     api.init server, logstub
     a, r <- utils.recordBuckets
@@ -86,7 +86,6 @@ describe "API" ->
       done!
 
     specify 'non-test bucket should also work' sinon.test (done) ->
-      @stub api, 'additional_facts', -> {}
       err, req, res, data <- client.get '/newbucket'
       check_err err, res, 'scab' 201
       expect data .to.match /^[0-9a-zA-Z]{20}$/

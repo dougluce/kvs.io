@@ -7,7 +7,7 @@
   "scripts": {
     "start": "nodemon -L -e ls --exec lsc kvs.io.ls",
     "test": "mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls",
-    "testmon": "nodemon -L -e ls --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
+    "testmon": "nodemon -L -e ls,json --exec 'node_modules/mocha/bin/mocha --reporter spec --compilers ls:LiveScript --growl test/test-*ls || growlnotify --message \"Nothing passed.\" --image node_modules/mocha/images/error.png Crashed'"
   },
   "bin": {
     "kvs.io": "./kvs.io.ls",

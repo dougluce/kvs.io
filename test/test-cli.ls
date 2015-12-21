@@ -9,14 +9,32 @@ require! {
   async
 }
 
+
+new_server = (logstub, cb) ->
+  telnet_server = cli.start_telnetd!
+  port = telnet_server.address!port
+
+  connector = new utils.Connector '127.0.0.1', port, ->
+    data <- connector.wait 2 # Get banner and prompt
+    expect data .to.eql [cli.banner, '>']
+    data <- connector.send '', 1 # Enter gives prompt back.
+    expect data .to.eql ['>']
+    expect logstub.firstCall.args .to.eql ["Telnet server started on #port"]
+    expect logstub.secondCall.args[0].test .to.eql 'env development'
+    expect logstub.secondCall.args[1] .to.eql 'connect'
+    expect logstub.lastCall.args[1] .to.eql 'cli: '
+    expect logstub.callCount .to.eql 3
+    cb telnet_server, connector
+
 describe "CLI alone" ->
-  actual_buckets = registered_buckets = d = sandbox = telnet_server = null
+  actual_buckets = registered_buckets = d = sandbox = telnet_server = logstub = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
     if process.env.NODE_ENV != 'test'
+      logstub := sandbox.stub!
       sandbox.stub bunyan, 'getLogger', ->
-        info: sandbox.stub!
+        info: logstub
       utils.stub_riak_client sandbox
 
     cli.init {} # use CLI-only commands.
@@ -24,26 +42,28 @@ describe "CLI alone" ->
     utils.clients!
     a, r <- utils.recordBuckets
     [actual_buckets, registered_buckets] := [a, r]
-    
-    telnet_server := cli.start_telnetd 7008
-    d := new utils.Connector '127.0.0.1', 7008, ->
-      data <- d.wait 2 # Get banner and prompt
-      expect data .to.eql [cli.banner, '>']
-      data <- d.send '', 1 # Enter gives prompt back.
-      expect data .to.eql ['>']
-      done!
+
+    new_ts, new_d <- new_server logstub
+    [telnet_server, d] := [new_ts, new_d]
+    done!
   
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
+    telnet_server.last_conn.on 'close' ->
+      done!
     <- telnet_server.close
     <- utils.checkBuckets actual_buckets, registered_buckets
     sandbox.restore!
-    done!
+
+  sendCheck = (command, count, cb) ->
+    result <- d.send command, count
+    expect logstub.lastCall.args[1] .to.eql "cli: #command"
+    cb result
 
   specify 'help should give me help' (done) ->
-    data <- d.send 'help', 5
+    data <- sendCheck 'help', 5
     expect data, 'hsgmh' .to.eql do
       * 'Commands available:'
         '  quit -- Quit your session.'
@@ -53,7 +73,7 @@ describe "CLI alone" ->
     done!
     
   specify 'help help should give me help on help' (done) ->
-    data <- d.send 'help help', 7
+    data <- sendCheck 'help help', 7
     expect data, 'hhsgmhoh'  .to.eql do
       * ''
         '  help [command]'
@@ -65,70 +85,72 @@ describe "CLI alone" ->
     done!
 
   specify 'Junk command gives me error' (done) ->
-    data <- d.send 'GOOBADEE', 2
-    expect data .to.eql do
+    data <- sendCheck 'GOOBADEE', 2
+    expect data,'jcgme' .to.eql do
       * 'That command is unknown.'
         '>'
     done!
 
   specify 'echo should echo' (done) ->
-    data <- d.send 'echo something here man', 2
+    data <- sendCheck 'echo something here man', 2
     expect data, 'ese' .to.eql do
       * 'something here man'
         '>'
     done!
 
   specify 'echo eats flags, removes backslashes' (done) ->
-    data <- d.send 'echo -n -e \\"H3lL0WoRlD\\"', 1
-    expect data[0], 'ese' .to.equal '"H3lL0WoRlD">'
+    data <- sendCheck 'echo -n -e \\"H3lL0WoRlD\\"', 1
+    expect data[0], 'eefrb' .to.equal '"H3lL0WoRlD">'
     done!
 
   specify 'echo with no args should still echo' (done) ->
-    data <- d.send 'echo', 2
-    expect data, 'ese' .to.eql do
+    data <- sendCheck 'echo', 2
+    expect data, 'ewnasse' .to.eql do
       * ''
         '>'
     done!
 
-
 describe "CLI full commands" ->
-  d = sandbox = telnet_server = null
+  d = sandbox = telnet_server = logstub = null
 
   before (done) ->
     sandbox := sinon.sandbox.create!
-    if process.env.NODE_ENV != 'test'
+    if process.env.NODE_ENV != 'test'      
+      logstub := sandbox.stub!
       sandbox.stub bunyan, 'getLogger', ->
-        info: sandbox.stub!
+        info: logstub
       utils.stub_riak_client sandbox
 
     commands.init!
     cli.init! # Full set of commands.
 
-    telnet_server := cli.start_telnetd 7009
-    d := new utils.Connector '127.0.0.1', 7009, ->
-      data <- d.wait 2 # Get banner and prompt
-      expect data .to.eql [cli.banner, '>']
-      data <- d.send '', 1 # Enter gives prompt back.
-      expect data .to.eql ['>']
-      done!
+    new_ts, new_d <- new_server logstub
+    [telnet_server, d] := [new_ts, new_d]
+    done!
 
   after (done) ->
     @timeout 100000 if process.env.NODE_ENV == 'test'
     data <- d.send 'quit', 1
     expect data .to.eql ['Disconnecting.']
+    telnet_server.last_conn.on 'close' ->
+      done!
     <- telnet_server.close
     sandbox.restore!
-    done!
+
+  sendCheck = (command, count, cb) ->
+    result <- d.send command, count
+    expect logstub.lastCall.args[1] .to.eql "cli: #command"
+    cb result
 
   specify 'help should give me another command' (done) ->
-    data <- d.send 'help', 4
+    data <- sendCheck 'help', 4
     expect data[3], 'hsgmac' .to.not.equal '>'
     data <- d.rest
     expect data[data.length-1], 'hsgmac2' .to.equal '>'
     done!
 
   specify 'help listkeys should give me help on listkeys' (done) ->
-    data <- d.send 'help listkeys', 9
+    data <- sendCheck 'help listkeys', 9
     expect data, 'hlsgmhol' .to.eql do
       * ''
         '  listkeys bucket [keycontains] [b]'
@@ -143,7 +165,7 @@ describe "CLI full commands" ->
 
 
   specify 'newbucket should create a bucket -- and show me info' (done) ->
-    data <- d.send 'newbucket', 2
+    data <- sendCheck 'newbucket', 2
     expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
     expect data[1] .to.equal '>'
     bucket = data[0].slice(-20)
@@ -154,18 +176,18 @@ describe "CLI full commands" ->
     done!
 
   specify 'not enough params means error' (done) ->
-    data <- d.send 'setkey', 2
+    data <- sendCheck 'setkey', 2
     expect data, 'nepms' .to.eql ["Not enough arguments.", '>']
-    data <- d.send 'setkey hey', 2
+    data <- sendCheck 'setkey hey', 2
     expect data, 'nepms2' .to.eql ["Not enough arguments.", '>']
-    data <- d.send 'setkey hey what', 2
+    data <- sendCheck 'setkey hey what', 2
     expect data, 'nepms3' .to.eql ["Not enough arguments.", '>']
     done!
 
   specify 'too many params means error' (done) ->
-    data <- d.send 'setkey hey whats this now guys', 2
+    data <- sendCheck 'setkey hey whats this now guys', 2
     expect data, 'tmpms' .to.eql ["Too many arguments.", '>']
-    data <- d.send 'setkey hey whats this now guys huh', 2
+    data <- sendCheck 'setkey hey whats this now guys huh', 2
     expect data, 'tmpms2' .to.eql ["Too many arguments.", '>']
     done!
 
@@ -175,28 +197,30 @@ describe "CLI full commands" ->
 #
 
 describe "CLI rodeo" ->
-  sandbox = telnet_server = null
-  server = client = json_client = null
+  sandbox = telnet_server = logstub = port =
+    server = client = json_client = null
   clients = []
 
   before (done) ->
     sandbox := sinon.sandbox.create!
+    logstub := sandbox.stub!
     if process.env.NODE_ENV != 'test'
       sandbox.stub bunyan, 'getLogger', ->
-        info: sandbox.stub!
+        info: logstub
       utils.stub_riak_client sandbox
     logger = bunyan.getLogger 'test-api'
-    s, c, j <- utils.startServer 8088
+    s, c, j <- utils.startServer
     [server, client, json_client] := [s, c, j]
     api.init server, logger
     commands.init!
     cli.init! # Full set of commands.
 
-    telnet_server := cli.start_telnetd 7009
+    telnet_server := cli.start_telnetd!
+    port := telnet_server.address!port
     done!
     
   new_cli = (n, next) ->
-    d = new utils.Connector '127.0.0.1', 7009, ->
+    d = new utils.Connector '127.0.0.1', port, ->
       data <- d.wait 2 # Get banner and prompt
       expect data .to.eql [cli.banner, '>']
       data <- d.send '', 1 # Enter gives prompt back.
@@ -229,7 +253,11 @@ describe "CLI rodeo" ->
     err, clis <- async.times 10, new_cli
     expect err, "su1oe" .to.not.exist
     err, results <- async.map clis, (client, cb) ->
-      data <- client.send 'newbucket', 2
+      sendCheck = (command, count, cb) ->
+        result <- client.send command, count
+        expect logstub.lastCall.args[1] .to.eql "cli: #command"
+        cb result
+      data <- sendCheck 'newbucket', 2
       expect data[0] .to.match /^Your new bucket is [0-9a-zA-Z]{20}$/
       expect data[1] .to.equal '>'
       bucket = data[0].slice(-20)

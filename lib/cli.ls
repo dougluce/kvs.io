@@ -66,12 +66,14 @@ export init = (new_cli_commands = commands) ->
 # Start the standalone telnet server.
 #
 
-export start_telnetd = (port = 7002) ->
+export start_telnetd = (port) ->
   # For telnet version
   telnet_server = net.createServer accept_telnet_connection
   telnet_server.maxConnections = 20;
   telnet_server.listen port
-  logger.info "Telnet server started on #port"
+  telnet_server.on 'connection', (conn) -> # For testing
+    @last_conn = conn
+  logger.info "Telnet server started on #{telnet_server.address!port}"
   return telnet_server
 
 module.exports.banner = banner = "Welcome to kvs.io.  Type 'help' for help."
@@ -87,7 +89,8 @@ function define_locals
   #
   cli_commands.quit = (w, socket, cb) ->
     w "Disconnecting."
-    return socket.end!
+    socket.on 'close', cb
+    socket.end!
   
   cli_commands.quit.params =
     * name: 'w'
@@ -232,10 +235,6 @@ export register_facts = (socket, facts) ->
   fd = socket._handle?fd
   socket_facts[fd] = facts
   
-add_facts = (socket, facts) ->
-  fd = socket._handle?fd
-  socket_facts[fd] <<< facts
-
 #
 # Parse a line of input for a command
 #
@@ -304,11 +303,7 @@ export cli_open = (socket) ->
     ..prompt!
 
   w = (line) -> socket.write "#line\r\n", 'utf8' if typeof line == 'string'
-  facts = 
-    w: w
-    socket: socket
-    rl: rl
-  add_facts socket, facts
+  socket_facts[fd].w = w
 
 accept_telnet_connection = (socket) ->
   socket.setNoDelay!
@@ -318,7 +313,8 @@ accept_telnet_connection = (socket) ->
     fd: socket._handle?fd
   unless is_prod
     facts['test'] = "env #{process.env.NODE_ENV}"
-  logger.info facts, "connect"
+    
+  logger.info {} <<< facts, "connect"
   facts['socket'] = socket
   register_facts socket, facts
   cli_open socket

@@ -20,7 +20,7 @@ export BUCKETLIST = "dPrxUTPoaj7ODc769zy1"
 now = new Date!
 riak_client = client = json_client = null
 
-export clients = (port = 8088, host = "127.0.0.1") ->
+export clients = (port, host = "127.0.0.1") ->
   client := restify.createStringClient do
     * version: '*'
       url: "http://#host:#port"
@@ -174,12 +174,12 @@ export stub_riak_client = (sinon) ->
           delete stub_riak[bucket]
       cb null, true
 
-export startServer = (port, done) ->
+export startServer = (done) ->
   server = restify.createServer!
   runServer = ->
-    <- server.listen port
+    <- server.listen
     console.log '%s server listening at %s', server.name, server.url
-    [client, json_client] = clients port
+    [client, json_client] = clients server.address!port
     done server, client, json_client
   domain.create!
     ..on 'error' (err) ->

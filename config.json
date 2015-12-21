@@ -1,0 +1,27 @@
+{
+  "production": {
+    "serverName": "kvs.io",
+    "errorLog": "/var/log/kvs/error.log",
+    "infoLog": "/var/log/kvs/access.log",
+    "logStash": {
+      "host": "logger.kvs.io",
+      "port": 9399,
+      "levels": ["error", "info"]
+    }
+  },
+  "test": {
+    "serverName": "kvs.io",
+    "debugLog": "/tmp/kvsio-debug.log",
+    "debugStdout": true,
+    "logStash": {
+      "host": "logger.kvs.io",
+      "port": 9399,
+      "levels": ["error", "info", "debug"]
+    }
+  },
+  "development": {
+    "serverName": "kvs.io",
+    "debugLog": "/tmp/kvsio-debug.log",
+    "debugStdout": true
+  }
+}

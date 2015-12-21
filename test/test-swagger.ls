@@ -16,7 +16,7 @@ describe "Swagger API" ->
     sandbox := sinon.sandbox.create!
     utils.stub_riak_client sandbox # Just in case.
     logstub = sandbox.stub logger
-    s, c, j <- utils.startServer 8088
+    s, c, j <- utils.startServer
     [server, client, json_client] := [s, c, j]
     api.init server, logstub
     done!

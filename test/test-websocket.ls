@@ -59,14 +59,14 @@ describe 'Websockets' ->
     if process.env.NODE_ENV != 'test'
       utils.stub_riak_client sandbox
     logstub = sandbox.stub logger
-    s, c, j <- utils.startServer 8088
+    s, c, j <- utils.startServer
     [server, client, json_client] := [s, c, j]
     api.init server, logstub
     utils.clients!
     a, r <- utils.recordBuckets
     [actual_buckets, registered_buckets] := [a, r]
     messageCallback = null
-    ws := new WebSocket 'ws://localhost:8088/ws'
+    ws := new WebSocket "ws://localhost:#{server.address!port}/ws"
       ..on 'open' ->
         done!
     ws.on 'message' (data, flags) ->
@@ -286,7 +286,7 @@ describe 'Websockets' ->
       newbucket <- utils.markedbucket true
       bucket := newbucket
       # Second socket for "outside" testing.
-      ws2 := new WebSocket 'ws://localhost:8088/ws'
+      ws2 := new WebSocket "ws://localhost:#{server.address!port}/ws"
         ..on 'open' ->
           done!
       messageCallback = null
