@@ -5,15 +5,20 @@
     "errorLog": "/var/log/kvs/error.log",
     "infoLog": "/var/log/kvs/access.log",
     "spdy": {
-      "cert":  "/etc/ssl/kvs.io.crt",
-      "key":  "/etc/ssl/kvs.io.key",
+      "cert": "/etc/ssl/kvs.io.crt",
+      "key": "/etc/ssl/kvs.io.key",
       "ca": "/etc/ssl/kvs.io.crt"
     },
     "logStash": {
       "host": "logger.kvs.io",
       "port": 9399,
-      "levels": ["error", "info"]
+      "levels": [
+        "error",
+        "info"
+      ]
     },
+    "web_passto": "http://w.kvs.io",
+    "web_passurl": "/w",
     "pidFile": "/var/run/kvsio/kvsio.pid"
   },
   "production2": {
@@ -31,8 +36,12 @@
     "logStash": {
       "host": "logger.kvs.io",
       "port": 9399,
-      "levels": ["error", "info"]
+      "levels": [
+        "error",
+        "info"
+      ]
     },
+    "web_passto": "http://w.kvs.io",
     "pidFile": "/tmp/kvs/kvsio.pid"
   },
   "test": {
@@ -51,8 +60,13 @@
     "logStash": {
       "host": "logger.kvs.io",
       "port": 9399,
-      "levels": ["error", "info", "debug"]
-    }
+      "levels": [
+        "error",
+        "info",
+        "debug"
+      ]
+    },
+    "web_passto": "http://w.kvs.io"
   },
   "development": {
     "hostname": "kvs.io",
@@ -62,6 +76,7 @@
     "debugStdout": true,
     "stubRiak": true,
     "logEnv": true,
+    "web_passto": "http://w.kvs.io",
     "spdy": {
       "cert": "./devkeys/self-ssl.crt",
       "key": "./devkeys/self-ssl.key",

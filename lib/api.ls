@@ -95,7 +95,7 @@ makeroutes = (server) ->
 web_proxy = (req, res, next) ->
   res.setHeader 
   options = 
-    url: 'http://w.kvs.io' + req.params[0]
+    url: config.web_passto + req.params[0]
     headers: 
       'X-Forwarded-For': ipware!get_ip(req).clientIp
   if req.headers['user-agent']
@@ -134,7 +134,10 @@ export init = (server, logobj) ->
   commands.init!
   
   makeroutes server
-  server.get /^(|\/|\/index.html|\/favicon.ico|\/w\/|\/w|\/w\/.*)$/ web_proxy
+  if config.web_passto
+    passurl = config.web_passurl  || '/w'
+    regex = new RegExp "^(|/|/index.html|/favicon.ico|#passurl/|#passurl|#passurl/.*)$"
+    server.get regex, web_proxy
   
   host = config.hostname + ':' + server.address!?port
   callbacks.set_listen_port server.address!?port
