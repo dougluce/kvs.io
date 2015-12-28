@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang=en>
+  <head>
+    <meta charset=utf-8>
+    <meta http-equiv=X-UA-Compatible content="IE=edge,chrome=1">
+    <title>kvsio</title>
+    <meta name=HandheldFriendly content=True>
+    <meta name=MobileOptimized content=320>
+    <meta name=viewport content="width=device-width,minimum-scale=1,maximum-scale=1">
+    <meta name=description content="Easy key-value store.">
+    <link href="//fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel=stylesheet>
+    <link href=//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css rel=stylesheet>
+    <link href=/web/main.css rel=stylesheet type=text/css>
+  </head>
+  <body class=Site>
+    <header class=Site-header>
+      <div class=Header role=banner>
+        <div class=Header-titles>
+          <h1 class=Header-title> kvsio </h1>
+          <h2 class=Header-subTitle>a simple, persistent key-value store</h2>
+        </div>
+      </div>
+    </header>
+    <main class="Site-content Site-content--full">
+      <section class=Section>
+        <div class=Container>
+          <h2 class=Section-heading>Completely simple.</h2>
+          <p>Get a new bucket:</p>
+          <pre>
+            <code class=language-html>
+% curl --request POST https://localhost:8080/
+"E3WjhOwvDD1gfP28I0t1"</code>
+          </pre>
+          <p>Set a key:<p>
+            <pre>
+              <code class=language-html>
+% curl --data 'Conrad Aiken' --request PUT https://localhost:8080/E3WjhOwvDD1gfP28I0t1/name</code>
+            </pre>
+          <p>Set another:<p>
+            <pre>
+              <code class=language-html>
+% curl --request POST --data 'bucket=E3WjhOwvDD1gfP28I0t1&key=address&value=228 East Oglethorpe Avenue Savannah, Georgia 31401' https://localhost:8080/setkey</code>
+            </pre>
+          <p>And retrieve:</p>
+          <pre>
+            <code class=language-html>
+% curl -sg 'https://localhost:8080/getkey/E3WjhOwvDD1gfP28I0t1/["name","address"]' | jq .
+{
+  "name": "Conrad Aiken",
+  "address": "228 East Oglethorpe Avenue Savannah, Georgia 31401"
+}</code>
+          </pre>
+          <p><A HREF="/docs">Full docs</a></p>
+        </div>
+      </section>
+    </main>
+    <footer class=Site-footer>
+      <div class=Footer>
+        <span class=Footer-social>
+        <div class=Footer-credits>
+          <span class=Footer-credit>
+            Source code and examples released under the <a href=http://opensource.org/licenses/MIT>
+              MIT</a>
+            license.</span>
+          <span class=Footer-credit>
+            Website and documentation licensed under <a href="http://creativecommons.org/licenses/by/4.0/">
+              CC BY 4.0</a>
+            .</span>
+        </div>
+      </div>
+    </footer>
+    <script src=/web/main.js>
+    </script>
+  </body>
+</html>

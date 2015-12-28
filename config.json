@@ -17,35 +17,12 @@
         "info"
       ]
     },
-    "web_passto": "http://w.kvs.io",
-    "web_passurl": "/w",
-    "pidFile": "/var/run/kvsio/kvsio.pid"
-  },
-  "production2": {
-    "hostname": "kvs.io",
-    "cliPort": 2300,
-    "webPort": 8080,
-    "errorLog": "/tmp/kvs/error.log",
-    "infoLog": "/tmp/kvs/access.log",
-    "spdy": {
-      "cert": "./devkeys/self-ssl.crt",
-      "key": "./devkeys/self-ssl.key",
-      "ca": "./devkeys/self-ssl.crt",
-      "port": 8088
-    },
-    "logStash": {
-      "host": "logger.kvs.io",
-      "port": 9399,
-      "levels": [
-        "error",
-        "info"
-      ]
-    },
-    "web_passto": "http://w.kvs.io",
-    "pidFile": "/tmp/kvs/kvsio.pid"
+    "web_passurl": "/web",
+    "pidFile": "/var/run/kvsio/kvsio.pid",
+    "simpleInterface": true
   },
   "test": {
-    "hostname": "kvs.io",
+    "hostname": "localhost",
     "webPort": 8080,
     "cliPort": 7002,
     "debugLog": "/tmp/kvsio-debug.log",
@@ -65,23 +42,23 @@
         "info",
         "debug"
       ]
-    },
-    "web_passto": "http://w.kvs.io"
+    }
   },
   "development": {
-    "hostname": "kvs.io",
+    "hostname": "localhost",
     "webPort": 8080,
     "cliPort": 7002,
     "debugLog": "/tmp/kvsio-debug.log",
     "debugStdout": true,
     "stubRiak": true,
     "logEnv": true,
-    "web_passto": "http://w.kvs.io",
     "spdy": {
       "cert": "./devkeys/self-ssl.crt",
       "key": "./devkeys/self-ssl.key",
       "ca": "./devkeys/self-ssl.crt",
       "port": 8880
-    }
+    },
+    "simpleInterface": true,
+    "web_passurl": "/web"
   }
 }

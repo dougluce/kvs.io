@@ -79,16 +79,18 @@ makeroutes = (server) ->
   for let commandname, command of commands when command.params
     # The route handler.
     # Simple form.
-    getUrl = "/#commandname"
     handler = makeHandler getUrl, command
-    for param in command.params
-      continue if param['x-private']
-      unless param['required']
-        server.get getUrl, handler
-      getUrl += "/:#{param.name}"
-    server.get getUrl, handler
-    server.post "/#commandname" handler
+    if config.simpleInterface
+      getUrl = "/#commandname"
+      for param in command.params
+        continue if param['x-private']
+        unless param['required']
+          server.get getUrl, handler
+        getUrl += "/:#{param.name}"
+      server.get getUrl, handler
+      server.post "/#commandname" handler
 
+    # REST form
     server[that[0]] that[1], handler if command.rest
     swaggerOperation commandname, command
 
@@ -138,7 +140,14 @@ export init = (server, logobj) ->
     passurl = config.web_passurl  || '/w'
     regex = new RegExp "^(|/|/index.html|/favicon.ico|#passurl/|#passurl|#passurl/.*)$"
     server.get regex, web_proxy
-  
+  else if passurl = config.web_passurl
+    trimmed_url = passurl.replace /^\//, ''
+    regex = new RegExp "^(|/|/index.html|/favicon.ico|#passurl/|#passurl|#passurl/.*)$"
+    server.get regex, restify.serveStatic do
+      directory: path.join path.resolve __dirname, '..', trimmed_url
+      default: 'index.html'
+
+    
   host = config.hostname + ':' + server.address!?port
   callbacks.set_listen_port server.address!?port
   server.get "/swagger/resources.json" (req, res) ->

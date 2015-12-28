@@ -90,6 +90,10 @@ bvalue =
   in: 'query'
   type: 'string'
 
+#
+# Start of the commands.
+#
+
 export newbucket = (info, ip, test, b, cb) ->
   ex, bucket_name <- randomString
   return cb null, ex if ex

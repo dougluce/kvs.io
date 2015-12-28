@@ -1,6 +1,9 @@
 require! {
   './common': {errors}
+  '../config.json'
 }
+
+config = config[process.env.NODE_ENV || "production"]
 
 export swagger = 
   * swagger: "2.0"
@@ -9,11 +12,11 @@ export swagger =
       description: """
 # A simple, reliable, and fast key-value store.
 
-The kvs.io service provides a globally accessible key-value store
-organized into buckets and stored redundantly.
+kvs.io provides a key-value store organized into buckets and stored
+redundantly.
 
-This service lets you store data securely using only browser-based
-HTML without the need for any complex set-up.
+The system ets you store data securely using only browser-based HTML
+without the need for any complex set-up.
 
 The first principle of kvs.io is simplicity. The regular API gives you
 all the semantic power of REST. The simple API lets you stuff
@@ -22,13 +25,13 @@ data with a POST.  All calls may be made via HTTP or HTTPS (use of
 HTTPS is STRONGLY recommended).
 
 The second principle of kvs.io is reliability.  Redundant front-ends
-keep availability high.  Each key-value pair is stored on at least
-three separate back-end servers.
+keep availability high.  Via Riak, each key-value pair is stored on at
+least three separate back-end servers.
 
-The third princple of kvs.io is speed.  A single, simple HTTP
-transaction is all it takes.  Your bucket name is your key to the
-system, and there is no need to go through an authentication
-transaction.  One hit in, one response out.
+The third principle of kvs.io is speed.  A single, simple HTTP
+transaction is all it takes.  Buckets organize all data on the system.
+There is no need to go through an authentication transaction.  One hit
+in, one response out.
 
 kvs.io supports two broad styles of interaction.  The RESTful
 interface provides varying methods acting on resources in the usual
@@ -94,18 +97,19 @@ export swaggerOperation = (commandname, cmd) ->
        "#{new errors[error][0]!statusCode}":
          description: errors[error][1]
 
-  getOp = ({} <<<< operation) <<<
-    tags: ["simple:#{cmd.group}"]
-    operationId: "get#commandname"
-  getOp.parameters = getParams if getParams.length > 0
-
-  postOp = ({} <<<< operation) <<<
-    tags: ["simple:#{cmd.group}"]
-    operationId: "post#commandname"
-  postOp.parameters = postParams if postParams.length > 0
-
-  swagger.paths.{}"/#path".get = getOp
-  swagger.paths.{}"/#commandname".post = postOp
+  if config.simpleInterface
+    getOp = ({} <<<< operation) <<<
+      tags: ["simple:#{cmd.group}"]
+      operationId: "get#commandname"
+    getOp.parameters = getParams if getParams.length > 0
+  
+    postOp = ({} <<<< operation) <<<
+      tags: ["simple:#{cmd.group}"]
+      operationId: "post#commandname"
+    postOp.parameters = postParams if postParams.length > 0
+  
+    swagger.paths.{}"/#path".get = getOp
+    swagger.paths.{}"/#commandname".post = postOp
 
   if cmd.rest
     restOp = ({} <<<< operation) <<<
