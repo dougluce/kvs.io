@@ -67,7 +67,7 @@ access data, you must know the bucket name.
 
 ### Set a key with PUT
 
-   % curl --data 'Conrad Aiken' --request PUT https://localhost:8080/E3WjhOwvDD1gfP28I0t1/name
+    % curl --data 'Conrad Aiken' --request PUT https://localhost:8080/E3WjhOwvDD1gfP28I0t1/name
 
 ### Set a key with POST parameters
 
