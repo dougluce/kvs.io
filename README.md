@@ -1,8 +1,9 @@
 # kvsio
 
-Kvs.io provides a monitorable key-value store organized into buckets
-and stored redundantly.  The system stores data securely using only
-browser-based HTML without the need for any complex set-up.
+A monitorable key-value store written in [LiveScript](livescript.net).
+Data is organized into buckets and stored redundantly.  The system
+stores data securely using only browser-based HTML without the need
+for any complex set-up.
 
 ## Principles
 
