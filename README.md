@@ -1,11 +1,29 @@
 # kvsio
 
-A monitorable key-value store written in [LiveScript](livescript.net).
-Data is organized into buckets and stored redundantly.  The system
-stores data securely using only browser-based HTML without the need
-for any complex set-up.
+A key-value access and monitoring layer written in
+[LiveScript](livescript.net).  Data is organized into buckets
+accessible via cryptographically secure names.
+
+Redundancy is provided by the excellent
+[riak](http://docs.basho.com/riak/latest/) key-value store. Use from
+browser javascript without complex set-up.
 
 ## Principles
+
+### A new access method
+
+Instead of a complex api-key- or username-based auth system, data is
+stored in buckets with cryptographically secure names.  This allows
+for secure partitioning of data without the need to pre-make
+authentication information.
+
+This is appropriate for certain applications such as per-user settings
+and information.  Bucket names are not generally listable by others.
+Keeping the bucket names secure requires care: always use HTTPS and
+take care not to expose bucket names externally.
+
+Outside of bucket names, there is no access control.  Anyone with a
+bucket name has full read/write access to that bucket.
 
 ### Simplicity
 
@@ -112,3 +130,8 @@ kvs.io leans on the distributed nature of Riak in order to serve data
 from multiple machines.  If you run this on a cluster and the cluster
 machines can get to each other on port 80, the monitoring functions
 will work across the cluster.
+
+# Future plans
+
+- Read-only views on writable buckets
+- Non-crypto named read-only buckets
